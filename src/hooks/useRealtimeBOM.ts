@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { MachineBOMItem, BOMChangeLog, ReplacementReason } from '../types/bom';
+import { initialBOMItems } from '../data/initialBOM';
 
 const CACHE_KEY_BOM = 'koch_bom_items_cache_v2';
 
@@ -7,9 +8,12 @@ export function useRealtimeBOM() {
   const [bomItems, setBomItems] = useState<MachineBOMItem[]>(() => {
     try {
       const cached = localStorage.getItem(CACHE_KEY_BOM);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
-    return [];
+    return initialBOMItems;
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,15 +29,18 @@ export function useRealtimeBOM() {
   const fetchBOM = useCallback(async () => {
     try {
       const res = await fetch('/api/bom');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.bomItems)) {
-        setBomItems(data.bomItems);
-        try {
-          localStorage.setItem(CACHE_KEY_BOM, JSON.stringify(data.bomItems));
-        } catch (e) {}
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.bomItems)) {
+          setBomItems(data.bomItems);
+          try {
+            localStorage.setItem(CACHE_KEY_BOM, JSON.stringify(data.bomItems));
+          } catch (e) {}
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load BOM items');
+      console.warn('Failed to load BOM items from server:', err);
     } finally {
       setIsLoading(false);
     }

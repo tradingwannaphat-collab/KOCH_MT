@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MaintenanceTicket, ProgressLog, TicketStatus, RootCauseType, SparePartItem, MachineAsset } from '../types/ticket';
 import { initialMachines } from '../data/initialMachines';
+import { initialTickets } from '../data/initialTickets';
 
 // Simple sound synthesis for notifications on real-time events
 function playNotificationSound(type: 'new' | 'update' = 'update') {
@@ -41,9 +42,12 @@ export function useRealtimeTickets() {
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => {
     try {
       const cached = localStorage.getItem(CACHE_KEY_TICKETS);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
-    return [];
+    return initialTickets;
   });
 
   const [machines, setMachines] = useState<MachineAsset[]>(() => {
@@ -85,34 +89,14 @@ export function useRealtimeTickets() {
   const fetchTickets = useCallback(async () => {
     try {
       const res = await fetch('/api/tickets');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         if (data.tickets && data.tickets.length > 0) {
           setTickets(data.tickets);
           try {
             localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(data.tickets));
           } catch (e) {}
-        } else if (data.tickets && data.tickets.length === 0) {
-          // If server is empty, check if we have cached tickets in browser localStorage
-          try {
-            const cached = localStorage.getItem(CACHE_KEY_TICKETS);
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                setTickets(parsed);
-                // Synchronize cached tickets back to server so server disk database is restored
-                for (const t of parsed) {
-                  fetch('/api/tickets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(t)
-                  }).catch(() => {});
-                }
-                return;
-              }
-            }
-          } catch (e) {}
-          setTickets([]);
         }
       }
     } catch (err) {
@@ -125,9 +109,10 @@ export function useRealtimeTickets() {
   const fetchMachines = useCallback(async () => {
     try {
       const res = await fetch('/api/machines');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.machines) {
+        if (data.machines && data.machines.length > 0) {
           setMachines(data.machines);
           try {
             localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(data.machines));

@@ -396,7 +396,7 @@
       "processName": "Slot",
       "category": "machine",
       "machineType": "slot",
-      "machineTypeLabel": "Slot (เครื่องเซาะร่อง)",
+      "machineTypeLabel": "Slot",
       "location": "บางแสน BS (โรงงาน)",
       "department": "ฝ่ายผลิต",
       "status": "active",
@@ -406,7 +406,10 @@
       "airWater": "No",
       "motorSpec": "Star 380V 50Hz 4 Pole | 1 HP 0.75 KW | 0.95A RPM 1250 R/min",
       "notes": "เครื่องเซาะร่องกล่องลูกฟูก โรงงานบางแสน BS",
-      "imageUrl": "https://6ae7f7e287027fb6113ad0da.imgix.net/sandbox/Cutting.png"
+      "imageUrl": "https://6ae7f7e287027fb6113ad0da.imgix.net/sandbox/Cutting.png",
+      "minMaxSheet": "",
+      "gearSpec": "",
+      "supplier": ""
     },
     {
       "id": "m-02",
@@ -1184,8 +1187,7 @@
           "ticketNos": {},
           "inspectorName": "สมเกียรติ ม.",
           "supervisorName": "เกียรติศักดิ์ พ.",
-          "notes": "",
-          "updatedAt": "2026-11-09T06:07:06.294Z"
+          "notes": ""
         },
         "2": {
           "day": 2,
@@ -1734,8 +1736,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.834Z",
-      "updatedAt": "2026-11-09T06:07:06.294Z"
+      "createdAt": "2026-11-02T02:40:52.028Z",
+      "updatedAt": "2026-11-02T02:40:52.029Z"
     },
     {
       "id": "sheet-m-02-2026-10",
@@ -2449,8 +2451,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.029Z",
+      "updatedAt": "2026-11-02T02:40:52.029Z"
     },
     {
       "id": "sheet-m-03-2026-10",
@@ -3126,8 +3128,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.029Z",
+      "updatedAt": "2026-11-02T02:40:52.029Z"
     },
     {
       "id": "sheet-m-04-2026-10",
@@ -3803,8 +3805,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.029Z",
+      "updatedAt": "2026-11-02T02:40:52.029Z"
     },
     {
       "id": "sheet-m-05-2026-10",
@@ -4480,8 +4482,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.029Z",
+      "updatedAt": "2026-11-02T02:40:52.029Z"
     },
     {
       "id": "sheet-m-06-2026-10",
@@ -5157,8 +5159,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.029Z",
+      "updatedAt": "2026-11-02T02:40:52.029Z"
     },
     {
       "id": "sheet-m-07-2026-10",
@@ -5834,8 +5836,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-08-2026-10",
@@ -6511,8 +6513,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.835Z",
-      "updatedAt": "2026-11-09T06:02:38.835Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-09-2026-10",
@@ -7188,8 +7190,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-10-2026-10",
@@ -7865,8 +7867,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-11-2026-10",
@@ -8542,8 +8544,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-12-2026-10",
@@ -9219,8 +9221,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-13-2026-10",
@@ -9896,8 +9898,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-14-2026-10",
@@ -10576,8 +10578,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-15-2026-10",
@@ -11253,8 +11255,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-16-2026-10",
@@ -11930,8 +11932,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-17-2026-10",
@@ -12607,8 +12609,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.030Z",
+      "updatedAt": "2026-11-02T02:40:52.030Z"
     },
     {
       "id": "sheet-m-18-2026-10",
@@ -13284,8 +13286,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.836Z",
-      "updatedAt": "2026-11-09T06:02:38.836Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-19-2026-10",
@@ -13961,8 +13963,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-20-2026-10",
@@ -14638,8 +14640,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-21-2026-10",
@@ -15315,8 +15317,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-22-2026-10",
@@ -15992,8 +15994,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-23-2026-10",
@@ -16669,8 +16671,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-24-2026-10",
@@ -17346,8 +17348,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-25-2026-10",
@@ -18023,8 +18025,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-26-2026-10",
@@ -18700,8 +18702,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.031Z",
+      "updatedAt": "2026-11-02T02:40:52.031Z"
     },
     {
       "id": "sheet-m-27-2026-10",
@@ -19377,8 +19379,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-28-2026-10",
@@ -20054,8 +20056,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.837Z",
-      "updatedAt": "2026-11-09T06:02:38.837Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-29-2026-10",
@@ -20731,8 +20733,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.838Z",
-      "updatedAt": "2026-11-09T06:02:38.838Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-30-2026-10",
@@ -21408,8 +21410,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.838Z",
-      "updatedAt": "2026-11-09T06:02:38.838Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-31-2026-10",
@@ -22085,8 +22087,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.838Z",
-      "updatedAt": "2026-11-09T06:02:38.838Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-32-2026-10",
@@ -22762,8 +22764,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.838Z",
-      "updatedAt": "2026-11-09T06:02:38.838Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-33-2026-10",
@@ -23439,8 +23441,8 @@
       "approverName": "สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)",
       "approvedDate": "2026-10-19",
       "formCode": "FM-MN01-04 Rev.00 Date 19/10/2026",
-      "createdAt": "2026-11-09T06:02:38.838Z",
-      "updatedAt": "2026-11-09T06:02:38.838Z"
+      "createdAt": "2026-11-02T02:40:52.032Z",
+      "updatedAt": "2026-11-02T02:40:52.032Z"
     },
     {
       "id": "sheet-m-01-2026-11",
@@ -113852,5 +113854,5 @@
       "updatedAt": "2026-11-12T06:03:58.048Z"
     }
   ],
-  "lastSaved": "2026-11-12T06:04:32.541Z"
+  "lastSaved": "2026-11-12T07:35:19.659Z"
 }

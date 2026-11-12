@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { MachineMonthlyCheckSheet, InspectionResult, DayCheckRecord } from '../types/inspection';
 import { initialMachines } from '../data/initialMachines';
+import { generateInitialCheckSheets } from '../data/initialInspections';
 
 const CACHE_KEY_SHEETS = 'koch_inspection_sheets_cache_v2';
 
@@ -8,9 +9,12 @@ export function useRealtimeInspections() {
   const [sheets, setSheets] = useState<MachineMonthlyCheckSheet[]>(() => {
     try {
       const cached = localStorage.getItem(CACHE_KEY_SHEETS);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
-    return [];
+    return generateInitialCheckSheets();
   });
   const [selectedMachineId, setSelectedMachineId] = useState<string>(initialMachines[0]?.id || 'm-01');
   const [selectedMonth, setSelectedMonth] = useState<string>('2026-10');
@@ -28,9 +32,10 @@ export function useRealtimeInspections() {
   const fetchInspections = useCallback(async (month: string = selectedMonth) => {
     try {
       const res = await fetch(`/api/inspections?month=${encodeURIComponent(month)}`);
-      if (res.ok) {
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
-        if (data.inspections) {
+        if (data.inspections && data.inspections.length > 0) {
           setSheets(data.inspections);
           try {
             localStorage.setItem(CACHE_KEY_SHEETS, JSON.stringify(data.inspections));

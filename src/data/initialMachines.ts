@@ -44,7 +44,7 @@ const rawMachines: MachineAsset[] = [
     processName: 'Slot',
     category: 'machine',
     machineType: 'slot',
-    machineTypeLabel: 'Slot (เครื่องเซาะร่อง)',
+    machineTypeLabel: 'Slot',
     location: 'บางแสน BS (โรงงาน)',
     department: 'ฝ่ายผลิต',
     status: 'active',
@@ -54,7 +54,10 @@ const rawMachines: MachineAsset[] = [
     airWater: 'No',
     motorSpec: 'Star 380V 50Hz 4 Pole | 1 HP 0.75 KW | 0.95A RPM 1250 R/min',
     imageUrl: 'https://6ae7f7e287027fb6113ad0da.imgix.net/sandbox/Cutting.png',
-    notes: 'เครื่องเซาะร่องกล่องลูกฟูก โรงงานบางแสน BS'
+    notes: 'เครื่องเซาะร่องกล่องลูกฟูก โรงงานบางแสน BS',
+    minMaxSheet: '',
+    gearSpec: '',
+    supplier: ''
   },
   // 02: Cutting
   {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { MachineAnnualPMPlan, PMMonthRecord, AnnualPMStats } from '../types/pm';
-import { initialAnnualPMPlans } from '../data/initialPMPlans';
+import { initialAnnualPMPlans, generateInitialAnnualPMPlans } from '../data/initialPMPlans';
 
 const CACHE_KEY_PREFIX = 'koch_pm_plans_';
 
@@ -9,7 +9,10 @@ export function useRealtimePM(initialYear: number = 2026) {
   const [pmPlans, setPmPlans] = useState<MachineAnnualPMPlan[]>(() => {
     try {
       const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${initialYear}`);
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {}
     return initialAnnualPMPlans;
   });
@@ -23,14 +26,36 @@ export function useRealtimePM(initialYear: number = 2026) {
       setLoading(true);
       setError(null);
       const res = await fetch(`/api/pm-plans?year=${year}`);
-      if (!res.ok) throw new Error('Failed to load PM plans');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.pmPlans)) {
-        setPmPlans(data.pmPlans);
-        try {
-          localStorage.setItem(`${CACHE_KEY_PREFIX}${year}`, JSON.stringify(data.pmPlans));
-        } catch (e) {}
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.pmPlans) && data.pmPlans.length > 0) {
+          setPmPlans(data.pmPlans);
+          try {
+            localStorage.setItem(`${CACHE_KEY_PREFIX}${year}`, JSON.stringify(data.pmPlans));
+          } catch (e) {}
+          return;
+        }
       }
+
+      // If backend didn't supply, check localStorage or generate locally
+      try {
+        const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${year}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPmPlans(parsed);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // Fallback: generate default plan for the year
+      const generated = year === 2026 ? initialAnnualPMPlans : generateInitialAnnualPMPlans(year);
+      setPmPlans(generated);
+      try {
+        localStorage.setItem(`${CACHE_KEY_PREFIX}${year}`, JSON.stringify(generated));
+      } catch (e) {}
     } catch (err: any) {
       console.warn('[KOCH PM] Error fetching plans from API:', err);
     } finally {

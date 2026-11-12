@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Volume2, VolumeX, Radio, FileText, RotateCcw, Smartphone, Bell, Globe, Printer, Download, Upload, Database, Check, BookOpen, Calendar } from 'lucide-react';
 import { KochLogo } from './KochLogo';
 import { Language, SUPPORTED_LANGUAGES, translations } from '../i18n/translations';
+import { downloadFullSystemBackup, restoreFullSystemBackup } from '../utils/backupService';
 
 interface HeaderProps {
   isConnected: boolean;
@@ -43,24 +44,11 @@ export const Header: React.FC<HeaderProps> = ({
   const handleDownloadBackup = async () => {
     try {
       setIsBackingUp(true);
-      const res = await fetch('/api/backup-data');
-      if (res.ok) {
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-        a.href = url;
-        a.download = `koch_factory_backup_${dateStr}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setStatusFeedback('สำรองข้อมูลสำเร็จ!');
-        setTimeout(() => setStatusFeedback(null), 3000);
-      }
-    } catch (e) {
+      await downloadFullSystemBackup();
+      setStatusFeedback('สำรองข้อมูลสำเร็จ!');
+      setTimeout(() => setStatusFeedback(null), 3000);
+    } catch (e: any) {
+      console.error('[KOCH Header] Backup failed', e);
       alert('เกิดข้อผิดพลาดในการดาวน์โหลดข้อมูลสำรอง');
     } finally {
       setIsBackingUp(false);
@@ -74,19 +62,15 @@ export const Header: React.FC<HeaderProps> = ({
     try {
       setIsRestoring(true);
       const text = await file.text();
-      const parsed = JSON.parse(text);
+      const res = await restoreFullSystemBackup(text);
 
-      const res = await fetch('/api/restore-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(parsed)
-      });
-
-      if (res.ok) {
-        setStatusFeedback('กู้คืนข้อมูลสำเร็จ!');
-        setTimeout(() => setStatusFeedback(null), 3000);
+      if (res.success) {
+        setStatusFeedback('กู้คืนข้อมูลสำเร็จ! กำลังรีเฟรชระบบ...');
+        setTimeout(() => {
+          window.location.reload();
+        }, 800);
       } else {
-        alert('ไฟล์ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบไฟล์ JSON สำรอง');
+        alert(res.message || 'ไฟล์ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบไฟล์ JSON สำรอง');
       }
     } catch (e) {
       alert('ไฟล์ไม่ถูกต้องหรือไม่ใช่ JSON');
