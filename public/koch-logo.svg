@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 250" width="100%" height="100%">
+  <!-- KOCH Box Logo Red & Black -->
+  <g id="box-mark">
+    <!-- Left Wall (Darker Red Shading) -->
+    <polygon points="150,119 265,182 265,123 150,60" fill="#E60012" />
+    <polygon points="150,119 265,182 265,116 150,53" fill="#D60010" />
+
+    <!-- Right Wall (Bright Red) -->
+    <polygon points="265,182 335,128 335,108 265,116" fill="#E60012" />
+
+    <!-- Inner Cavity / Floor -->
+    <polygon points="150,60 265,123 335,82 220,20" fill="#B3000D" />
+    <polygon points="163,61 258,112 322,76 226,25" fill="#E60012" />
+    <!-- White center opening/hole -->
+    <polygon points="187,63 248,96 297,71 235,38" fill="#FFFFFF" />
+
+    <!-- Open Flaps (White face with red outline) -->
+    <!-- Front-Left Flap -->
+    <polygon points="120,103 234,136 265,114 150,81" fill="#FFFFFF" stroke="#E60012" stroke-width="4.5" stroke-linejoin="round" />
+    
+    <!-- Front-Right Flap -->
+    <polygon points="272,110 321,120 373,70 324,60" fill="#FFFFFF" stroke="#E60012" stroke-width="4.5" stroke-linejoin="round" />
+
+    <!-- Back-Left Flap -->
+    <polygon points="112,65 152,22 226,38 186,81" fill="#FFFFFF" stroke="#E60012" stroke-width="4.5" stroke-linejoin="round" />
+
+    <!-- Back-Right Flap -->
+    <polygon points="230,20 260,4 363,28 333,45" fill="#FFFFFF" stroke="#E60012" stroke-width="4.5" stroke-linejoin="round" />
+  </g>
+
+  <!-- Typography KOCH in bold geometric modern font -->
+  <g id="koch-text" fill="#000000">
+    <!-- K -->
+    <path d="M 128 200 L 138 200 L 138 238 L 128 238 Z M 138 219 L 163 200 L 175 200 L 148 221 L 175 238 L 161 238 L 138 223 Z" />
+    <!-- O -->
+    <path d="M 205 200 C 193 200 186 207 186 219 C 186 231 193 238 205 238 C 217 238 224 231 224 219 C 224 207 217 200 205 200 Z M 205 208 C 211 208 214 212 214 219 C 214 226 211 230 205 230 C 199 230 196 226 196 219 C 196 212 199 208 205 208 Z" />
+    <!-- C -->
+    <path d="M 268 200 C 256 200 248 207 248 219 C 248 231 256 238 268 238 C 278 238 284 233 286 226 L 276 226 C 274 229 271 230 268 230 C 262 230 258 226 258 219 C 258 212 262 208 268 208 C 271 208 274 209 276 212 L 286 212 C 284 205 278 200 268 200 Z" />
+    <!-- H -->
+    <path d="M 312 200 L 322 200 L 322 214 L 348 214 L 348 200 L 358 200 L 358 238 L 348 238 L 348 223 L 322 223 L 322 238 L 312 238 Z" />
+  </g>
+</svg>

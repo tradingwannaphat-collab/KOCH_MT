@@ -1,0 +1,6 @@
+{
+  "name": "KOCH Smart Maintenance - ระบบแจ้งซ่อมและอัปเดตงานเรียลไทม์",
+  "description": "ระบบแจ้งซ่อมและติดตามความคืบหน้าของงานหน้างานผ่านมือถือแบบเรียลไทม์ ถอดแบบจากฟอร์มใบแจ้งซ่อม KOCH FM-MN01-03",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
