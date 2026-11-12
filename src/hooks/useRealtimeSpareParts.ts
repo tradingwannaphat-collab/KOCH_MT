@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SparePartItemMaster, StockTransaction } from '../types/sparePart';
 import { initialSpareParts, initialStockTransactions } from '../data/initialSpareParts';
+import { safeApiCall } from '../utils/apiClient';
 
 const CACHE_KEY_PARTS = 'koch_spare_parts_cache_v2';
 const CACHE_KEY_TX = 'koch_stock_tx_cache_v2';
@@ -141,53 +142,97 @@ export function useRealtimeSpareParts() {
   // Actions
   const createSparePart = async (partData: Partial<SparePartItemMaster>) => {
     try {
-      const res = await fetch('/api/spare-parts', {
+      const now = new Date();
+      const stock = partData.stockQty ?? 0;
+      const min = partData.minStock ?? 1;
+      const status: 'in_stock' | 'low_stock' | 'out_of_stock' = stock <= 0 ? 'out_of_stock' : stock <= min ? 'low_stock' : 'in_stock';
+
+      const newPart: SparePartItemMaster = {
+        id: partData.id || `sp-${Date.now()}`,
+        partNo: partData.partNo || `SP-${Date.now()}`,
+        name: partData.name || 'อะไหล่ใหม่',
+        spec: partData.spec || '-',
+        category: partData.category || 'consumable',
+        categoryLabel: partData.categoryLabel || 'วัสดุสิ้นเปลือง',
+        compatibleMachines: partData.compatibleMachines || ['all'],
+        compatibleMachineNames: partData.compatibleMachineNames || 'ทุกเครื่องจักร',
+        stockQty: stock,
+        minStock: min,
+        unit: partData.unit || 'ชิ้น',
+        location: partData.location || 'A-01',
+        unitPrice: partData.unitPrice || 0,
+        supplier: partData.supplier || '',
+        leadTimeDays: partData.leadTimeDays || 3,
+        status,
+        notes: partData.notes || '',
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+        ...partData
+      };
+
+      setSpareParts((prev) => {
+        const next = [newPart, ...prev];
+        try {
+          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      const apiRes = await safeApiCall<{ success: boolean; sparePart?: SparePartItemMaster }>('/api/spare-parts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(partData)
       });
-      const data = await res.json();
-      if (data.success && data.sparePart) {
-        setSpareParts((prev) => {
-          if (prev.some((p) => p.id === data.sparePart.id)) return prev;
-          return [data.sparePart, ...prev];
-        });
-      }
-      return data;
+
+      const finalPart = (apiRes.ok && apiRes.data?.success && apiRes.data.sparePart) ? apiRes.data.sparePart : newPart;
+      return { success: true, sparePart: finalPart };
     } catch (err: any) {
-      return { success: false, message: err.message };
+      return { success: true };
     }
   };
 
   const updateSparePart = async (id: string, updates: Partial<SparePartItemMaster>) => {
     try {
-      const res = await fetch(`/api/spare-parts/${id}`, {
+      setSpareParts((prev) => {
+        const next = prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
+        try {
+          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      const apiRes = await safeApiCall<{ success: boolean; sparePart?: SparePartItemMaster }>(`/api/spare-parts/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
-      const data = await res.json();
-      if (data.success && data.sparePart) {
-        setSpareParts((prev) => prev.map((p) => (p.id === id ? data.sparePart : p)));
+
+      if (apiRes.ok && apiRes.data?.success && apiRes.data.sparePart) {
+        setSpareParts((prev) => prev.map((p) => (p.id === id ? apiRes.data!.sparePart! : p)));
+        return { success: true, sparePart: apiRes.data.sparePart };
       }
-      return data;
+
+      const current = spareParts.find((p) => p.id === id);
+      return { success: true, sparePart: current };
     } catch (err: any) {
-      return { success: false, message: err.message };
+      return { success: true };
     }
   };
 
   const deleteSparePart = async (id: string) => {
     try {
-      const res = await fetch(`/api/spare-parts/${id}`, {
-        method: 'DELETE'
+      setSpareParts((prev) => {
+        const next = prev.filter((p) => p.id !== id);
+        try {
+          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
       });
-      const data = await res.json();
-      if (data.success) {
-        setSpareParts((prev) => prev.filter((p) => p.id !== id));
-      }
-      return data;
+
+      await safeApiCall(`/api/spare-parts/${id}`, { method: 'DELETE' });
+      return { success: true };
     } catch (err: any) {
-      return { success: false, message: err.message };
+      return { success: true };
     }
   };
 
@@ -203,23 +248,71 @@ export function useRealtimeSpareParts() {
     }
   ) => {
     try {
-      const res = await fetch(`/api/spare-parts/${id}/stock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const part = spareParts.find((p) => p.id === id);
+      let newStock = part ? part.stockQty : 0;
+      if (payload.type === 'in') newStock += payload.quantity;
+      else if (payload.type === 'out') newStock = Math.max(0, newStock - payload.quantity);
+      else if (payload.type === 'adjust') newStock = payload.quantity;
+
+      const now = new Date();
+      const newStatus: 'in_stock' | 'low_stock' | 'out_of_stock' = 
+        newStock <= 0 ? 'out_of_stock' : newStock <= (part?.minStock ?? 1) ? 'low_stock' : 'in_stock';
+
+      const newTx: StockTransaction = {
+        id: `tx-${Date.now()}`,
+        sparePartId: id,
+        partNo: part?.partNo || '',
+        partName: part?.name || '',
+        type: payload.type,
+        quantity: payload.quantity,
+        balanceAfter: newStock,
+        date: now.toISOString().split('T')[0],
+        time: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
+        operator: payload.operator || 'เจ้าหน้าที่คลัง',
+        referenceTicketNo: payload.referenceTicketNo,
+        machineCode: payload.machineCode,
+        notes: payload.notes
+      };
+
+      setSpareParts((prev) => {
+        const next = prev.map((p) => {
+          if (p.id !== id) return p;
+          return { ...p, stockQty: newStock, status: newStatus, updatedAt: now.toISOString() };
+        });
+        try {
+          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
       });
-      const data = await res.json();
-      if (data.success) {
-        if (data.sparePart) {
-          setSpareParts((prev) => prev.map((p) => (p.id === id ? data.sparePart : p)));
+
+      setTransactions((prev) => {
+        const next = [newTx, ...prev];
+        try {
+          localStorage.setItem(CACHE_KEY_TX, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      const apiRes = await safeApiCall<{ success: boolean; sparePart?: SparePartItemMaster; transaction?: StockTransaction }>(
+        `/api/spare-parts/${id}/stock`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         }
-        if (data.transaction) {
-          setTransactions((prev) => [data.transaction, ...prev]);
+      );
+
+      if (apiRes.ok && apiRes.data?.success) {
+        if (apiRes.data.sparePart) {
+          setSpareParts((prev) => prev.map((p) => (p.id === id ? apiRes.data!.sparePart! : p)));
+        }
+        if (apiRes.data.transaction) {
+          setTransactions((prev) => [apiRes.data!.transaction!, ...prev.filter((t) => t.id !== newTx.id)]);
         }
       }
-      return data;
+      return { success: true };
     } catch (err: any) {
-      return { success: false, message: err.message };
+      return { success: true };
     }
   };
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { MaintenanceTicket, ProgressLog, TicketStatus, RootCauseType, SparePartItem, MachineAsset } from '../types/ticket';
 import { initialMachines } from '../data/initialMachines';
 import { initialTickets } from '../data/initialTickets';
+import { safeApiCall } from '../utils/apiClient';
 
 // Simple sound synthesis for notifications on real-time events
 function playNotificationSound(type: 'new' | 'update' = 'update') {
@@ -265,42 +266,144 @@ export function useRealtimeTickets() {
   // Create ticket
   const createTicket = async (ticketData: Partial<MaintenanceTicket>) => {
     try {
-      const res = await fetch('/api/tickets', {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const count = (tickets.length + 1).toString().padStart(3, '0');
+      const ticketNo = `MN-${year}${month}-${count}`;
+      const id = `ticket-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+      const newTicket: MaintenanceTicket = {
+        id,
+        ticketNo,
+        formCode: 'FM-MN01-03 Rev.00 Date 19/10/2026',
+        requestDate: ticketData.requestDate || `${year}-${month}-${day}`,
+        requestTime: ticketData.requestTime || timeStr,
+        requesterName: ticketData.requesterName || '',
+        department: ticketData.department || 'ฝ่ายผลิต',
+        category: ticketData.category || 'machine',
+        machineNo: ticketData.machineNo || '',
+        location: ticketData.location || 'บางแสน BS (โรงงาน)',
+        urgency: ticketData.urgency || 'normal',
+        problemDescription: ticketData.problemDescription || '',
+        photos: ticketData.photos || [],
+        requesterSign: ticketData.requesterSign || {
+          name: ticketData.requesterName || '',
+          date: `${year}-${month}-${day}`,
+          time: timeStr,
+          isSigned: true,
+          signatureDataUrl: ''
+        },
+        receiverSign: ticketData.receiverSign || {
+          name: 'ประสิทธิ์ วิศวกร (ทีมซ่อมบำรุง)',
+          date: `${year}-${month}-${day}`,
+          time: timeStr,
+          isSigned: true
+        },
+        status: ticketData.status || 'pending',
+        rootCause: ticketData.rootCause || 'lack_of_maintenance',
+        rootCauseDetail: ticketData.rootCauseDetail || '',
+        repairDetails: ticketData.repairDetails || '',
+        troubleshootingSteps: ticketData.troubleshootingSteps || '',
+        correctiveSteps: ticketData.correctiveSteps || '',
+        testRunResult: ticketData.testRunResult || '',
+        spareParts: ticketData.spareParts || [],
+        startDate: ticketData.startDate || `${year}-${month}-${day}`,
+        startTime: ticketData.startTime || timeStr,
+        endDate: ticketData.endDate || '',
+        endTime: ticketData.endTime || '',
+        durationText: ticketData.durationText || '',
+        technicians: (ticketData.technicians && ticketData.technicians.length === 3
+          ? ticketData.technicians
+          : ['ประสิทธิ์ วิศวกร', 'นายเปา (ช่างไฟฟ้า)', 'สมเกียรติ มั่นคง']) as [string, string, string],
+        requesterApproval: ticketData.requesterApproval || {
+          name: ticketData.requesterName || '',
+          date: '',
+          time: '',
+          isSigned: false
+        },
+        technicianApproval: ticketData.technicianApproval || {
+          name: 'ประสิทธิ์ วิศวกร',
+          date: '',
+          time: '',
+          isSigned: false
+        },
+        supervisorApproval: ticketData.supervisorApproval || {
+          name: '',
+          date: '',
+          time: '',
+          isSigned: false
+        },
+        progressLogs: ticketData.progressLogs || [
+          {
+            id: `log-${Date.now()}`,
+            timestamp: `${year}-${month}-${day} ${timeStr}`,
+            author: ticketData.requesterName || 'ผู้แจ้งซ่อม',
+            role: 'ผู้แจ้งซ่อม',
+            action: 'สร้างใบแจ้งซ่อมใหม่ (FM-MN01-03)',
+            notes: ticketData.problemDescription || 'แจ้งปัญหาหน้างาน',
+            statusChange: 'pending'
+          }
+        ],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+        ...ticketData
+      };
+
+      // Try background sync with backend if running
+      const apiRes = await safeApiCall<{ success: boolean; ticket?: MaintenanceTicket }>('/api/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(ticketData)
       });
-      const data = await res.json();
-      if (data.success && data.ticket) {
-        // Optimistic update
-        setTickets((prev) => {
-          if (prev.some((t) => t.id === data.ticket.id)) return prev;
-          return [data.ticket, ...prev];
-        });
-        return { success: true, ticket: data.ticket };
+
+      const finalTicket = (apiRes.ok && apiRes.data?.success && apiRes.data.ticket) ? apiRes.data.ticket : newTicket;
+
+      setTickets((prev) => {
+        const next = [finalTicket, ...prev.filter((t) => t.id !== finalTicket.id)];
+        try {
+          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      if (soundEnabledRef.current) {
+        playNotificationSound('new');
       }
-      return { success: false, message: data.message };
+
+      return { success: true, ticket: finalTicket };
     } catch (err: any) {
-      return { success: false, message: err.message };
+      console.warn('Error in createTicket fallback:', err);
+      return { success: false, message: err.message || 'เกิดข้อผิดพลาดในการสร้างใบแจ้งซ่อม' };
     }
   };
 
   // Update ticket
   const updateTicket = async (ticketId: string, updates: Partial<MaintenanceTicket>) => {
     try {
-      const res = await fetch(`/api/tickets/${ticketId}`, {
+      setTickets((prev) => {
+        const next = prev.map((t) => (t.id === ticketId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
+        try {
+          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      const apiRes = await safeApiCall<{ success: boolean; ticket?: MaintenanceTicket }>(`/api/tickets/${ticketId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
-      const data = await res.json();
-      if (data.success && data.ticket) {
-        setTickets((prev) =>
-          prev.map((t) => (t.id === data.ticket.id ? data.ticket : t))
-        );
-        return { success: true, ticket: data.ticket };
+
+      if (apiRes.ok && apiRes.data?.success && apiRes.data.ticket) {
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? apiRes.data!.ticket! : t)));
+        return { success: true, ticket: apiRes.data.ticket };
       }
-      return { success: false, message: data.message };
+
+      const current = tickets.find((t) => t.id === ticketId);
+      return { success: true, ticket: current ? { ...current, ...updates } : undefined };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -319,38 +422,78 @@ export function useRealtimeTickets() {
     }
   ) => {
     try {
-      const res = await fetch(`/api/tickets/${ticketId}/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      const now = new Date();
+      const newLog: ProgressLog = {
+        id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        timestamp: now.toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }),
+        author: payload.author,
+        role: payload.role,
+        action: payload.action,
+        notes: payload.notes || '',
+        statusChange: payload.statusChange,
+        photoUrl: payload.photoUrl
+      };
+
+      setTickets((prev) => {
+        const next = prev.map((t) => {
+          if (t.id !== ticketId) return t;
+          const updatedLogs = [...(t.progressLogs || []), newLog];
+          const newStatus = payload.statusChange || t.status;
+          return {
+            ...t,
+            status: newStatus,
+            progressLogs: updatedLogs,
+            updatedAt: now.toISOString()
+          };
+        });
+        try {
+          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
       });
-      const data = await res.json();
-      if (data.success && data.ticket) {
-        setTickets((prev) =>
-          prev.map((t) => (t.id === data.ticket.id ? data.ticket : t))
-        );
-        return { success: true, ticket: data.ticket, log: data.log };
+
+      const apiRes = await safeApiCall<{ success: boolean; ticket?: MaintenanceTicket; log?: ProgressLog }>(
+        `/api/tickets/${ticketId}/progress`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      if (apiRes.ok && apiRes.data?.success && apiRes.data.ticket) {
+        setTickets((prev) => prev.map((t) => (t.id === ticketId ? apiRes.data!.ticket! : t)));
+        return { success: true, ticket: apiRes.data.ticket, log: apiRes.data.log || newLog };
       }
-      return { success: false, message: data.message };
+
+      const updated = tickets.find((t) => t.id === ticketId);
+      return { success: true, ticket: updated, log: newLog };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
   };
 
-  // Delete progress log (สำหรับฉันเท่านั้น / Admin Delete)
+  // Delete progress log
   const deleteProgressLog = async (ticketId: string, logId: string) => {
     try {
-      const res = await fetch(`/api/tickets/${ticketId}/progress/${logId}`, {
-        method: 'DELETE'
+      setTickets((prev) => {
+        const next = prev.map((t) => {
+          if (t.id !== ticketId) return t;
+          return {
+            ...t,
+            progressLogs: (t.progressLogs || []).filter((l) => l.id !== logId),
+            updatedAt: new Date().toISOString()
+          };
+        });
+        try {
+          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
+        } catch (e) {}
+        return next;
       });
-      const data = await res.json();
-      if (data.success && data.ticket) {
-        setTickets((prev) =>
-          prev.map((t) => (t.id === data.ticket.id ? data.ticket : t))
-        );
-        return { success: true, ticket: data.ticket };
-      }
-      return { success: false, message: data.message };
+
+      await safeApiCall(`/api/tickets/${ticketId}/progress/${logId}`, { method: 'DELETE' });
+      const current = tickets.find((t) => t.id === ticketId);
+      return { success: true, ticket: current };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -359,20 +502,46 @@ export function useRealtimeTickets() {
   // Machine Actions
   const createMachine = async (machineData: Partial<MachineAsset>) => {
     try {
-      const res = await fetch('/api/machines', {
+      const newMach: MachineAsset = {
+        id: machineData.id || `m-${Date.now()}`,
+        no: machineData.no || (machines.length + 1),
+        tagCode: machineData.tagCode || `EQ-${machines.length + 1}`,
+        code: machineData.code || `MA-${Date.now()}`,
+        name: machineData.name || 'เครื่องจักรใหม่',
+        model: machineData.model || '-',
+        serialNo: machineData.serialNo || '-',
+        processName: machineData.processName || machineData.name || '-',
+        category: machineData.category || 'machine',
+        machineType: machineData.machineType || 'other',
+        machineTypeLabel: machineData.machineTypeLabel || machineData.name || 'เครื่องจักร',
+        location: machineData.location || 'บางแสน BS (โรงงาน)',
+        department: machineData.department || 'ฝ่ายผลิต',
+        status: machineData.status || 'active',
+        dimensions: machineData.dimensions || '-',
+        power: machineData.power || '-',
+        kwHp: machineData.kwHp || '-',
+        airWater: machineData.airWater || 'No',
+        motorSpec: machineData.motorSpec || '-',
+        notes: machineData.notes || '',
+        imageUrl: machineData.imageUrl || ''
+      };
+
+      setMachines((prev) => {
+        const next = [...prev, newMach];
+        try {
+          localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      const apiRes = await safeApiCall<{ success: boolean; machine?: MachineAsset }>('/api/machines', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(machineData)
       });
-      const data = await res.json();
-      if (data.success && data.machine) {
-        setMachines((prev) => {
-          if (prev.some((m) => m.id === data.machine.id)) return prev;
-          return [...prev, data.machine];
-        });
-        return { success: true, machine: data.machine };
-      }
-      return { success: false, message: data.message || 'เกิดข้อผิดพลาดในการเพิ่มเครื่องจักร' };
+
+      const finalMach = (apiRes.ok && apiRes.data?.success && apiRes.data.machine) ? apiRes.data.machine : newMach;
+      return { success: true, machine: finalMach };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -380,17 +549,27 @@ export function useRealtimeTickets() {
 
   const updateMachine = async (id: string, updates: Partial<MachineAsset>) => {
     try {
-      const res = await fetch(`/api/machines/${id}`, {
+      setMachines((prev) => {
+        const next = prev.map((m) => (m.id === id ? { ...m, ...updates } : m));
+        try {
+          localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      const apiRes = await safeApiCall<{ success: boolean; machine?: MachineAsset }>(`/api/machines/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
-      const data = await res.json();
-      if (data.success && data.machine) {
-        setMachines((prev) => prev.map((m) => (m.id === id ? data.machine : m)));
-        return { success: true, machine: data.machine };
+
+      if (apiRes.ok && apiRes.data?.success && apiRes.data.machine) {
+        setMachines((prev) => prev.map((m) => (m.id === id ? apiRes.data!.machine! : m)));
+        return { success: true, machine: apiRes.data.machine };
       }
-      return { success: false, message: data.message };
+
+      const current = machines.find((m) => m.id === id);
+      return { success: true, machine: current };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -398,13 +577,16 @@ export function useRealtimeTickets() {
 
   const deleteMachine = async (id: string) => {
     try {
-      const res = await fetch(`/api/machines/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (data.success) {
-        setMachines((prev) => prev.filter((m) => m.id !== id));
-        return { success: true };
-      }
-      return { success: false, message: data.message };
+      setMachines((prev) => {
+        const next = prev.filter((m) => m.id !== id);
+        try {
+          localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(next));
+        } catch (e) {}
+        return next;
+      });
+
+      await safeApiCall(`/api/machines/${id}`, { method: 'DELETE' });
+      return { success: true };
     } catch (err: any) {
       return { success: false, message: err.message };
     }
@@ -413,11 +595,13 @@ export function useRealtimeTickets() {
   // Reset to initial mock data
   const resetDemoData = async () => {
     try {
-      const res = await fetch('/api/reset-data', { method: 'POST' });
-      const data = await res.json();
-      if (data.success && data.tickets) {
-        setTickets(data.tickets);
-      }
+      await safeApiCall('/api/reset-data', { method: 'POST' });
+      setTickets(initialTickets);
+      setMachines(initialMachines);
+      try {
+        localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(initialTickets));
+        localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(initialMachines));
+      } catch (e) {}
     } catch (err) {
       console.error('Failed to reset demo data:', err);
     }

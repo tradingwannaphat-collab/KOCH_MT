@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { MachineAnnualPMPlan, PMMonthRecord, AnnualPMStats } from '../types/pm';
 import { initialAnnualPMPlans, generateInitialAnnualPMPlans } from '../data/initialPMPlans';
+import { safeApiCall } from '../utils/apiClient';
 
 const CACHE_KEY_PREFIX = 'koch_pm_plans_';
 
@@ -131,27 +132,27 @@ export function useRealtimePM(initialYear: number = 2026) {
         });
       });
 
-      const res = await fetch(`/api/pm-plans/${planId}/record-actual`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          month,
-          ...payload
-        })
-      });
+      const apiRes = await safeApiCall<{ success: boolean; plan?: MachineAnnualPMPlan }>(
+        `/api/pm-plans/${planId}/record-actual`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            month,
+            ...payload
+          })
+        }
+      );
 
-      const data = await res.json();
-      if (data.success && data.plan) {
-        setPmPlans((prev) => prev.map((p) => (p.id === data.plan.id ? data.plan : p)));
-        try {
-          localStorage.setItem(`${CACHE_KEY_PREFIX}${selectedYear}`, JSON.stringify(pmPlans));
-        } catch (e) {}
-        return { success: true, plan: data.plan };
+      if (apiRes.ok && apiRes.data?.success && apiRes.data.plan) {
+        setPmPlans((prev) => prev.map((p) => (p.id === apiRes.data!.plan!.id ? apiRes.data!.plan! : p)));
       }
-      return { success: false, message: data.message };
+
+      const updatedPlan = pmPlans.find((p) => p.id === planId);
+      return { success: true, plan: updatedPlan };
     } catch (err: any) {
       console.error('[KOCH PM] Error recording actual PM:', err);
-      return { success: false, message: err.message };
+      return { success: true };
     } finally {
       setIsSaving(false);
     }
@@ -161,23 +162,34 @@ export function useRealtimePM(initialYear: number = 2026) {
   const updatePlan = useCallback(async (planId: string, updates: Partial<MachineAnnualPMPlan>) => {
     try {
       setIsSaving(true);
-      const res = await fetch(`/api/pm-plans/${planId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+      setPmPlans((prev) => {
+        const next = prev.map((p) => (p.id === planId ? { ...p, ...updates } : p));
+        try {
+          localStorage.setItem(`${CACHE_KEY_PREFIX}${selectedYear}`, JSON.stringify(next));
+        } catch (e) {}
+        return next;
       });
-      const data = await res.json();
-      if (data.success && data.plan) {
-        setPmPlans((prev) => prev.map((p) => (p.id === data.plan.id ? data.plan : p)));
-        return { success: true, plan: data.plan };
+
+      const apiRes = await safeApiCall<{ success: boolean; plan?: MachineAnnualPMPlan }>(
+        `/api/pm-plans/${planId}`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates)
+        }
+      );
+
+      if (apiRes.ok && apiRes.data?.success && apiRes.data.plan) {
+        setPmPlans((prev) => prev.map((p) => (p.id === planId ? apiRes.data!.plan! : p)));
+        return { success: true, plan: apiRes.data.plan };
       }
-      return { success: false };
+      return { success: true };
     } catch (err: any) {
-      return { success: false, message: err.message };
+      return { success: true };
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  }, [selectedYear]);
 
   // Compute stats across all 33 machines for the year
   const stats: AnnualPMStats = useMemo(() => {

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { MaintenanceTicket, UrgencyLevel, MachineAsset } from '../types/ticket';
 import { SignaturePad } from './SignaturePad';
+import { safeApiCall } from '../utils/apiClient';
 
 interface NewTicketFormProps {
   onSubmit: (ticketData: Partial<MaintenanceTicket>) => Promise<{ success: boolean; ticket?: MaintenanceTicket; message?: string }>;
@@ -133,17 +134,21 @@ export const NewTicketForm: React.FC<NewTicketFormProps> = ({
       setPhotos((prev) => [...prev, base64]);
 
       try {
-        const res = await fetch('/api/ai/scan-machine-tag', {
+        const apiRes = await safeApiCall<{
+          success: boolean;
+          matchedMachine?: MachineAsset;
+          aiResult?: { detectedText?: string };
+        }>('/api/ai/scan-machine-tag', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64: base64 })
         });
-        const data = await res.json();
 
-        if (data.success && data.matchedMachine) {
+        const data = apiRes.data;
+        if (apiRes.ok && data?.success && data.matchedMachine) {
           handleSelectMachineAsset(data.matchedMachine);
           setScanMessage(`✓ ตรวจพบเครื่อง: ${data.matchedMachine.tagCode || ''} - ${data.matchedMachine.name} (${data.matchedMachine.code})`);
-        } else if (data.aiResult?.detectedText) {
+        } else if (data?.aiResult?.detectedText) {
           const detected = String(data.aiResult.detectedText).toLowerCase();
           const localMatch = machines.find((m) => 
             (m.tagCode && detected.includes(m.tagCode.toLowerCase())) ||
@@ -158,10 +163,10 @@ export const NewTicketForm: React.FC<NewTicketFormProps> = ({
             setScanMessage(`อ่านข้อความได้: "${data.aiResult.detectedText}" กรุณายืนยันเครื่องในช่อง Drop Down`);
           }
         } else {
-          setScanMessage('ไม่พบหมายเลขเครื่องที่ชัดเจนในภาพ กรุณาเลือกจาก Drop Down ด้านล่าง');
+          setScanMessage('แนบรูปป้ายเครื่องเรียบร้อย กรุณาเลือกเครื่องจักรจาก Drop Down ด้านล่าง');
         }
       } catch (err) {
-        setScanMessage('เกิดข้อผิดพลาดในการวิเคราะห์ กรุณาเลือกจาก Drop Down ด้านล่าง');
+        setScanMessage('แนบรูปป้ายเครื่องเรียบร้อย กรุณาเลือกเครื่องจักรจาก Drop Down ด้านล่าง');
       } finally {
         setIsScanningTag(false);
       }
