@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Package, 
   Calendar, 
@@ -21,11 +21,15 @@ import {
   ChevronUp,
   X,
   Layers,
-  FileText
+  FileText,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { MachineBOMItem, BOMChangeLog, ReplacementReason } from '../types/bom';
 import { MachineAsset } from '../types/ticket';
 import { compressImageFile } from '../utils/imageCompressor';
+import { KochLogo } from './KochLogo';
+import { exportElementToPdf } from '../utils/pdfExport';
 
 interface MachineBOMManagerProps {
   bomItems: MachineBOMItem[];
@@ -93,6 +97,23 @@ export const MachineBOMManager: React.FC<MachineBOMManagerProps> = ({
   const [newSupplier, setNewSupplier] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
+
+  const printBomRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleExportBomPdf = async () => {
+    if (!printBomRef.current) return;
+    setIsExportingPdf(true);
+    try {
+      await exportElementToPdf(
+        printBomRef.current,
+        'FM-MN01-07_BOM_อะไหล่ประจำเครื่อง.pdf',
+        { orientation: 'landscape', fitToOnePage: true, marginMm: 6 }
+      );
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   // Calculate current status (overdue, due_soon, normal) based on today's date
   const todayStr = new Date().toISOString().split('T')[0];
@@ -268,14 +289,27 @@ export const MachineBOMManager: React.FC<MachineBOMManagerProps> = ({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ เพิ่มอุปกรณ์ใน BOM</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportBomPdf}
+              disabled={isExportingPdf}
+              className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="บันทึกตาราง BOM อะไหล่ประจำเครื่องเป็น PDF 1 หน้า (FM-MN01-07)"
+            >
+              {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              <span>{isExportingPdf ? 'กำลังสร้าง PDF...' : 'บันทึกเป็น PDF (FM-MN01-07)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ เพิ่มอุปกรณ์ใน BOM</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -973,6 +1007,131 @@ export const MachineBOMManager: React.FC<MachineBOMManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Hidden Official Printable BOM Report (FM-MN01-07 - 1 Page A4 Landscape) */}
+      <div className="hidden">
+        <div
+          ref={printBomRef}
+          className="p-6 bg-white text-slate-900 font-sans w-[297mm] mx-auto space-y-4"
+          style={{ fontFamily: 'Sarabun, Tahoma, sans-serif' }}
+        >
+          {/* Header with KOCH Logo & Document Control Box */}
+          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+            <div className="flex items-center gap-3">
+              <KochLogo size="md" variant="horizontal" />
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  บริษัท ค็อค แพคเกจจิ้ง แอนด์ พาร์ทเกจ เซอร์วิสเซส จำกัด
+                </h2>
+                <h3 className="text-sm font-bold text-slate-700">
+                  รายการอะไหล่ประจำเครื่องจักรและแผนการเปลี่ยนตามรอบอายุ (MACHINE BOM & REPLACEMENT RECORD)
+                </h3>
+              </div>
+            </div>
+            <div className="text-right text-[10.5px] font-mono border border-slate-800 rounded px-3 py-1.5 bg-slate-50 shrink-0 space-y-0.5">
+              <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-07</div>
+              <div className="text-slate-600 text-[10px]">Rev.00 • Date 19/10/2026</div>
+              <div className="text-slate-600 text-[10px]">หน้าที่: 1 / 1 • พิมพ์: {new Date().toLocaleDateString('th-TH')}</div>
+            </div>
+          </div>
+
+          {/* KPI Strip */}
+          <div className="grid grid-cols-4 gap-3 text-xs">
+            <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50">
+              <div className="text-[10px] text-slate-500">รายการอะไหล่ทั้งหมด</div>
+              <div className="text-lg font-black text-slate-900 font-mono">{metrics.total} รายการ</div>
+            </div>
+            <div className="border border-emerald-300 rounded-lg p-2.5 bg-emerald-50">
+              <div className="text-[10px] text-emerald-700">สถานะปกติ</div>
+              <div className="text-lg font-black text-emerald-700 font-mono">{metrics.normal} รายการ</div>
+            </div>
+            <div className="border border-amber-300 rounded-lg p-2.5 bg-amber-50">
+              <div className="text-[10px] text-amber-700">ใกล้ถึงกำหนดเปลี่ยน (&le;15 วัน)</div>
+              <div className="text-lg font-black text-amber-700 font-mono">{metrics.dueSoon} รายการ</div>
+            </div>
+            <div className="border border-rose-300 rounded-lg p-2.5 bg-rose-50">
+              <div className="text-[10px] text-rose-700">เลยกำหนดเปลี่ยน (Overdue)</div>
+              <div className="text-lg font-black text-rose-700 font-mono">{metrics.overdue} รายการ</div>
+            </div>
+          </div>
+
+          {/* BOM Table */}
+          <table className="w-full text-left border-collapse border border-slate-400 text-[10.5px]">
+            <thead>
+              <tr className="bg-slate-800 text-white">
+                <th className="p-2 border border-slate-600 text-center w-8">No.</th>
+                <th className="p-2 border border-slate-600 w-36">เครื่องจักร</th>
+                <th className="p-2 border border-slate-600">รายการชิ้นส่วน / รหัส / สเปก</th>
+                <th className="p-2 border border-slate-600 w-24">หมวดหมู่</th>
+                <th className="p-2 border border-slate-600 text-center w-16">จำนวน</th>
+                <th className="p-2 border border-slate-600 text-center w-24">รอบเปลี่ยน</th>
+                <th className="p-2 border border-slate-600 text-center w-24">เปลี่ยนล่าสุด</th>
+                <th className="p-2 border border-slate-600 text-center w-24">ครบกำหนดถัดไป</th>
+                <th className="p-2 border border-slate-600 text-center w-24">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-300">
+              {filteredItems.length > 0 ? (
+                filteredItems.map((item, idx) => (
+                  <tr key={item.id} className={idx % 2 === 1 ? 'bg-slate-50' : 'bg-white'}>
+                    <td className="p-1.5 border border-slate-300 text-center font-bold">{idx + 1}</td>
+                    <td className="p-1.5 border border-slate-300">
+                      <div className="font-bold text-slate-900">{item.machineName}</div>
+                      <div className="text-[9.5px] font-mono text-slate-500">
+                        {item.machineTag ? `${item.machineTag} • ` : ''}{item.machineCode}
+                      </div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300">
+                      <div className="font-bold text-slate-900">{item.partName}</div>
+                      <div className="text-[9.5px] text-slate-600 font-mono">
+                        P/N: {item.partNo || '-'} • Spec: {item.spec || '-'}
+                      </div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-slate-700">{item.categoryLabel}</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-mono">
+                      {item.quantity} {item.unit}
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-center">{item.cycleLabel}</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-mono">{item.lastReplacedDate}</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-mono font-bold">{item.nextDueDate}</td>
+                    <td className="p-1.5 border border-slate-300 text-center font-bold">
+                      {item.status === 'overdue' ? (
+                        <span className="text-rose-700">เลยกำหนด ({Math.abs(item.diffDays)} วัน)</span>
+                      ) : item.status === 'due_soon' ? (
+                        <span className="text-amber-700">ใกล้ครบ ({item.diffDays} วัน)</span>
+                      ) : (
+                        <span className="text-emerald-700">ปกติ</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="p-6 text-center text-slate-400">
+                    ไม่พบรายการอะไหล่ใน BOM ตามตัวกรองที่เลือก
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Signature Footer */}
+          <div className="pt-4 border-t border-slate-300 grid grid-cols-3 gap-6 text-center text-[11px]">
+            <div className="space-y-6">
+              <div className="border-b border-slate-400 pb-1">ลงชื่อ........................................................</div>
+              <div>ผู้จัดทำ / เจ้าหน้าที่ซ่อมบำรุง</div>
+            </div>
+            <div className="space-y-6">
+              <div className="border-b border-slate-400 pb-1">ลงชื่อ........................................................</div>
+              <div>หัวหน้าแผนกซ่อมบำรุง</div>
+            </div>
+            <div className="space-y-6">
+              <div className="border-b border-slate-400 pb-1">ลงชื่อ........................................................</div>
+              <div>ผู้อนุมัติ / ผู้จัดการโรงงาน</div>
+            </div>
+          </div>
+        </div>
+      </div>
 
     </div>
   );

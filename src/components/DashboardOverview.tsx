@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   BarChart3, 
   Clock, 
@@ -12,10 +12,14 @@ import {
   TrendingDown,
   Building2,
   Cog,
-  FileText
+  FileText,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { MaintenanceTicket, RootCauseType, MachineAsset } from '../types/ticket';
 import { getStatusText, getStatusColor, getRootCauseText } from '../hooks/useRealtimeTickets';
+import { KochLogo } from './KochLogo';
+import { exportElementToPdf } from '../utils/pdfExport';
 
 interface DashboardOverviewProps {
   tickets: MaintenanceTicket[];
@@ -34,6 +38,22 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   // Filter status for the quick jobs table
   const [filterStatus, setFilterStatus] = useState<'all' | 'emergency' | 'in_progress' | 'waiting_parts' | 'completed'>('all');
+  const printDashboardRef = useRef<HTMLDivElement>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleExportDashboardPdf = async () => {
+    if (!printDashboardRef.current) return;
+    setIsExportingPdf(true);
+    try {
+      await exportElementToPdf(
+        printDashboardRef.current,
+        'FM-MN01-08_KOCH_Maintenance_Dashboard_KPI.pdf',
+        { orientation: 'landscape', fitToOnePage: true, marginMm: 6 }
+      );
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   // Metrics calculation
   const metrics = useMemo(() => {
@@ -121,12 +141,25 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={onNewTicket}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm transition shrink-0"
-        >
-          <span>+ สร้างใบแจ้งซ่อม</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleExportDashboardPdf}
+            disabled={isExportingPdf}
+            className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
+            title="บันทึกสรุปแดชบอร์ด KPI และรายการใบแจ้งซ่อมเป็น PDF 1 หน้า (FM-MN01-08)"
+          >
+            {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            <span>{isExportingPdf ? 'กำลังสร้าง PDF...' : 'บันทึกเป็น PDF (FM-MN01-08)'}</span>
+          </button>
+
+          <button
+            onClick={onNewTicket}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-sm transition shrink-0 cursor-pointer"
+          >
+            <span>+ สร้างใบแจ้งซ่อม</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stat Cards Grid - Clickable to filter jobs */}
@@ -633,6 +666,142 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               );
             })
           )}
+        </div>
+      </div>
+
+      {/* Hidden Official Printable KPI Summary Sheet (FM-MN01-08 - 1 Page A4 Landscape) */}
+      <div className="hidden">
+        <div
+          ref={printDashboardRef}
+          className="p-6 bg-white text-slate-900 font-sans w-[297mm] mx-auto space-y-4"
+          style={{ fontFamily: 'Sarabun, Tahoma, sans-serif' }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
+            <div className="flex items-center gap-3">
+              <KochLogo size="md" variant="horizontal" />
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  บริษัท ค็อค แพคเกจจิ้ง แอนด์ พาร์ทเกจ เซอร์วิสเซส จำกัด
+                </h2>
+                <h3 className="text-sm font-bold text-slate-700">
+                  รายงานสรุปภาพรวมงานซ่อมบำรุงและสถิติ KPI (MAINTENANCE KPI SUMMARY REPORT)
+                </h3>
+              </div>
+            </div>
+            <div className="text-right text-[10.5px] font-mono border border-slate-800 rounded px-3 py-1.5 bg-slate-50 shrink-0 space-y-0.5">
+              <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-08</div>
+              <div className="text-slate-600 text-[10px]">อ้างอิง: FM-MN01-03 • Rev.00</div>
+              <div className="text-slate-600 text-[10px]">หน้าที่: 1 / 1 • พิมพ์: {new Date().toLocaleDateString('th-TH')}</div>
+            </div>
+          </div>
+
+          {/* 5 KPI Summary Cards */}
+          <div className="grid grid-cols-5 gap-3 text-xs">
+            <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50">
+              <div className="text-[10px] text-slate-500">งานทั้งหมด</div>
+              <div className="text-lg font-black font-mono text-slate-900">{metrics.total} งาน</div>
+            </div>
+            <div className="border border-rose-300 rounded-lg p-2.5 bg-rose-50">
+              <div className="text-[10px] text-rose-700">ฉุกเฉิน-หยุดไลน์ (ค้าง)</div>
+              <div className="text-lg font-black font-mono text-rose-700">{metrics.emergency} งาน</div>
+            </div>
+            <div className="border border-indigo-300 rounded-lg p-2.5 bg-indigo-50">
+              <div className="text-[10px] text-indigo-700">กำลังซ่อมแซม</div>
+              <div className="text-lg font-black font-mono text-indigo-700">{metrics.inProgress} งาน</div>
+            </div>
+            <div className="border border-purple-300 rounded-lg p-2.5 bg-purple-50">
+              <div className="text-[10px] text-purple-700">รออะไหล่</div>
+              <div className="text-lg font-black font-mono text-purple-700">{metrics.waitingParts} งาน</div>
+            </div>
+            <div className="border border-emerald-300 rounded-lg p-2.5 bg-emerald-50">
+              <div className="text-[10px] text-emerald-700">ซ่อมเสร็จ/ปิดงาน</div>
+              <div className="text-lg font-black font-mono text-emerald-700">
+                {metrics.completed} งาน ({metrics.total > 0 ? Math.round((metrics.completed / metrics.total) * 100) : 0}%)
+              </div>
+            </div>
+          </div>
+
+          {/* Root Cause Breakdown Strip */}
+          <div className="border border-slate-300 rounded-lg p-2.5 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3 text-[11px]">
+            <span className="font-bold text-slate-800">วิเคราะห์สาเหตุความเสียหาย (Root Cause):</span>
+            <div className="flex flex-wrap items-center gap-5 font-mono">
+              <span>ขาดการบำรุงรักษา: <strong>{metrics.causes.lack_of_maintenance}</strong></span>
+              <span>อะไหล่ไม่มีคุณภาพ: <strong>{metrics.causes.substandard_parts}</strong></span>
+              <span>ใช้งานผิดประเภท: <strong>{metrics.causes.misuse}</strong></span>
+              <span>อื่นๆ: <strong>{metrics.causes.other}</strong></span>
+            </div>
+          </div>
+
+          {/* Maintenance Tickets Table */}
+          <table className="w-full text-left border-collapse border border-slate-400 text-[10.5px]">
+            <thead>
+              <tr className="bg-slate-800 text-white">
+                <th className="p-2 border border-slate-600 text-center w-8">No.</th>
+                <th className="p-2 border border-slate-600 w-28">เลขที่ใบซ่อม</th>
+                <th className="p-2 border border-slate-600 w-24">วันที่ / เวลา</th>
+                <th className="p-2 border border-slate-600 w-36">เครื่องจักร / สถานที่</th>
+                <th className="p-2 border border-slate-600">อาการเสีย / การแก้ไข</th>
+                <th className="p-2 border border-slate-600 w-28">ผู้แจ้ง / แผนก</th>
+                <th className="p-2 border border-slate-600 text-center w-24">สถานะ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-300">
+              {displayedTickets.length > 0 ? (
+                displayedTickets.map((t, idx) => (
+                  <tr key={t.id} className={idx % 2 === 1 ? 'bg-slate-50' : 'bg-white'}>
+                    <td className="p-1.5 border border-slate-300 text-center font-bold">{idx + 1}</td>
+                    <td className="p-1.5 border border-slate-300 font-mono font-bold text-blue-900">{t.ticketNo}</td>
+                    <td className="p-1.5 border border-slate-300 font-mono">
+                      <div>{t.requestDate}</div>
+                      <div className="text-[9.5px] text-slate-500">{t.requestTime}</div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300">
+                      <div className="font-bold text-slate-900">{t.machineNo}</div>
+                      <div className="text-[9.5px] text-slate-500">{t.location}</div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300">
+                      <div className="font-medium text-slate-900">{t.problemDescription}</div>
+                      {(t.correctiveSteps || t.repairDetails) && (
+                        <div className="text-[9.5px] text-emerald-800 mt-0.5">
+                          แก้ไข: {t.correctiveSteps || t.repairDetails}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-1.5 border border-slate-300">
+                      <div>{t.requesterName}</div>
+                      <div className="text-[9.5px] text-slate-500">{t.department}</div>
+                    </td>
+                    <td className="p-1.5 border border-slate-300 text-center font-bold">
+                      {getStatusText(t.status)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="p-6 text-center text-slate-400">
+                    ไม่มีรายการใบแจ้งซ่อมตามเงื่อนไขที่เลือก
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Signature Footer */}
+          <div className="pt-4 border-t border-slate-300 grid grid-cols-3 gap-6 text-center text-[11px]">
+            <div className="space-y-6">
+              <div className="border-b border-slate-400 pb-1">ลงชื่อ........................................................</div>
+              <div>ผู้จัดทำรายงาน (ฝ่ายซ่อมบำรุง)</div>
+            </div>
+            <div className="space-y-6">
+              <div className="border-b border-slate-400 pb-1">ลงชื่อ........................................................</div>
+              <div>หัวหน้าแผนกซ่อมบำรุง</div>
+            </div>
+            <div className="space-y-6">
+              <div className="border-b border-slate-400 pb-1">ลงชื่อ........................................................</div>
+              <div>ผู้จัดการโรงงาน / ผู้อนุมัติ</div>
+            </div>
+          </div>
         </div>
       </div>
 

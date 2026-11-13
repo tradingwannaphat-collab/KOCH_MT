@@ -403,7 +403,7 @@ export const SparePartsManager: React.FC<SparePartsManagerProps> = ({
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>พิมพ์รายงานสต๊อก (PDF)</span>
+                  <span>บันทึกเป็น PDF (FM-MN01-06)</span>
                 </>
               )}
             </button>

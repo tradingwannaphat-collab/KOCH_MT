@@ -236,7 +236,7 @@ export const AuditComplianceCenter: React.FC<AuditComplianceCenterProps> = ({
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>ดาวน์โหลดรายงานผล Audit (PDF)</span>
+                  <span>บันทึกเป็น PDF (FM-ISO-AUDIT-MN01)</span>
                 </>
               )}
             </button>

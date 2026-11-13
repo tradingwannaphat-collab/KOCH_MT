@@ -436,7 +436,7 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>ดาวน์โหลดเป็น PDF (FM-MN01-01)</span>
+                  <span>บันทึกเป็น PDF (FM-MN01-01)</span>
                 </>
               )}
             </button>

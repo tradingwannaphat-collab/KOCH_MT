@@ -26,7 +26,8 @@ import {
   Wind,
   Cog,
   FileCheck2,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { MachineAsset, MaintenanceTicket, TicketStatus } from '../types/ticket';
 import { getStatusText, getStatusColor, getUrgencyInfo, getRootCauseText } from '../hooks/useRealtimeTickets';
@@ -222,7 +223,7 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
     setIsExportingPdf(true);
     await exportElementToPdf(
       printSheetRef.current,
-      `FM-MN01-05_ประวัติการซ่อมบำรุง_${currentMachine.tagCode || currentMachine.code}_${currentMachine.name}.pdf`,
+      `FM-MN01-02_ประวัติการซ่อมบำรุง_${currentMachine.tagCode || currentMachine.code}_${currentMachine.name}.pdf`,
       { orientation: 'portrait', fitToOnePage: true, marginMm: 6 }
     );
     setIsExportingPdf(false);
@@ -275,6 +276,16 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
                   <span>ตรวจเช็คประจำวัน</span>
                 </button>
               )}
+              <button
+                type="button"
+                onClick={handleExportPdf}
+                disabled={isExportingPdf}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
+                title="บันทึกประวัติการซ่อมบำรุงเครื่องนี้เป็น PDF (FM-MN01-02)"
+              >
+                {isExportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                <span>{isExportingPdf ? 'กำลังสร้าง PDF...' : 'บันทึกเป็น PDF (FM-MN01-02)'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setActiveViewMode(activeViewMode === 'printable_sheet' ? 'timeline' : 'printable_sheet')}
@@ -845,9 +856,9 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
         </>
       )}
 
-      {/* Sub-view 3: Printable Machine History Record Sheet (FM-MN01-05) */}
-      {currentMachine && activeViewMode === 'printable_sheet' && (
-        <div className="space-y-4 print:space-y-0">
+      {/* Sub-view 3: Printable Machine History Record Sheet (FM-MN01-02) - Always mounted so 1-click PDF export works from any tab */}
+      {currentMachine && (
+        <div className={activeViewMode === 'printable_sheet' ? 'space-y-4 print:space-y-0' : 'hidden'}>
           <style>{`@media print { @page { size: A4 portrait; margin: 6mm; } }`}</style>
           {/* Action Toolbar */}
           <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 print:hidden no-print">
@@ -864,10 +875,10 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
                 type="button"
                 onClick={handleExportPdf}
                 disabled={isExportingPdf}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>{isExportingPdf ? 'กำลังสร้างไฟล์ PDF...' : 'ดาวน์โหลด PDF (1 หน้า)'}</span>
+                {isExportingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                <span>{isExportingPdf ? 'กำลังสร้างไฟล์ PDF...' : 'บันทึกเป็น PDF (1 หน้า)'}</span>
               </button>
               <button
                 type="button"
@@ -901,8 +912,7 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
                   </div>
                 </div>
                 <div className="text-right text-[10.5px] font-mono border border-slate-800 rounded px-3 py-1.5 bg-slate-50 shrink-0 space-y-0.5">
-                  <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-05</div>
-                  <div className="text-slate-700 text-[10px]">อ้างอิง: FM-MN01-01 / FM-MN01-03</div>
+                  <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-02</div>
                   <div className="text-slate-600 text-[10px]">Rev.00 • Date 19/10/2026</div>
                   <div className="text-slate-600 text-[10px]">หน้าที่: 1 / 1 • พิมพ์: {new Date().toLocaleDateString('th-TH')}</div>
                 </div>

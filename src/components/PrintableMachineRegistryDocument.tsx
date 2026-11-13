@@ -98,7 +98,7 @@ export const PrintableMachineRegistryDocument: React.FC<PrintableMachineRegistry
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>ดาวน์โหลดเป็น PDF</span>
+                <span>บันทึกเป็น PDF (1 หน้า)</span>
               </>
             )}
           </button>

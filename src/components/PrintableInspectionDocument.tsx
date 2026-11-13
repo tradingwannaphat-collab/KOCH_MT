@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MachineMonthlyCheckSheet, DEFAULT_INSPECTION_ITEMS } from '../types/inspection';
 import { MachineAsset } from '../types/ticket';
 import { KochLogo } from './KochLogo';
@@ -6,6 +6,10 @@ import { Printer, ArrowLeft, Globe, Download, Loader2, Upload, Camera, Check } f
 import { Language, translations, SUPPORTED_LANGUAGES, DEFAULT_ITEMS_I18N } from '../i18n/translations';
 import { exportElementToPdf } from '../utils/pdfExport';
 import { compressImageFile } from '../utils/imageCompressor';
+
+export interface PrintableInspectionDocumentHandle {
+  exportPdf: () => Promise<void>;
+}
 
 interface PrintableInspectionDocumentProps {
   sheet: MachineMonthlyCheckSheet;
@@ -18,7 +22,7 @@ interface PrintableInspectionDocumentProps {
   onSelectMonth?: (month: string) => void;
 }
 
-export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentProps> = ({
+export const PrintableInspectionDocument = forwardRef<PrintableInspectionDocumentHandle, PrintableInspectionDocumentProps>(({
   sheet,
   allMachines,
   allSheets,
@@ -27,7 +31,7 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
   onUpdateMachine,
   selectedMonth,
   onSelectMonth
-}) => {
+}, ref) => {
   const [printMode, setPrintMode] = useState<'filled' | 'blank'>('filled');
   const [printLang, setPrintLang] = useState<Language>('th');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -109,6 +113,10 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
     });
     setIsDownloadingPdf(false);
   };
+
+  useImperativeHandle(ref, () => ({
+    exportPdf: handleDownloadPdf
+  }));
 
   const isSlotMachine = (currentMachine?.code === 'MA2312014') || 
                         (currentMachine?.name.toLowerCase().includes('slot')) || 
@@ -262,7 +270,7 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
             ) : (
               <>
                 <Download className="w-4 h-4" />
-                <span>ดาวน์โหลดเป็น PDF</span>
+                <span>บันทึกเป็น PDF (1 หน้า)</span>
               </>
             )}
           </button>
@@ -574,4 +582,6 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
       </div>
     </div>
   );
-};
+});
+
+PrintableInspectionDocument.displayName = 'PrintableInspectionDocument';

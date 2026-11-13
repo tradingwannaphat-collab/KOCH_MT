@@ -425,7 +425,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
               ) : (
                 <>
                   <Download className="w-4 h-4" />
-                  <span>ดาวน์โหลด PDF (FM-MN01-02)</span>
+                  <span>บันทึกเป็น PDF (FM-MN01-02)</span>
                 </>
               )}
             </button>

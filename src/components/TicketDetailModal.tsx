@@ -322,13 +322,16 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={() => onPrintTicket(ticket)}
-              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg transition"
-              title="พิมพ์แบบฟอร์ม FM-MN01-03"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="เปิดหน้าพิมพ์ / บันทึกเป็น PDF แบบฟอร์ม FM-MN01-03"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">บันทึก PDF / พิมพ์ (FM-MN01-03)</span>
+              <span className="sm:hidden">PDF</span>
             </button>
             <button
               onClick={onClose}

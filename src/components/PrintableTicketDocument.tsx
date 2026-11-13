@@ -85,7 +85,7 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
             className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
           >
             {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            <span>{isDownloadingPdf ? 'กำลังสร้าง PDF...' : 'ดาวน์โหลดเป็น PDF (1 หน้า)'}</span>
+            <span>{isDownloadingPdf ? 'กำลังสร้าง PDF...' : 'บันทึกเป็น PDF (1 หน้า)'}</span>
           </button>
           <button
             type="button"

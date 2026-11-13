@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MachineAsset } from '../types/ticket';
 import { 
   MachineMonthlyCheckSheet, 
@@ -9,7 +9,7 @@ import {
   CUTTING_INSPECTION_ITEMS
 } from '../types/inspection';
 import { KochLogo } from './KochLogo';
-import { PrintableInspectionDocument } from './PrintableInspectionDocument';
+import { PrintableInspectionDocument, PrintableInspectionDocumentHandle } from './PrintableInspectionDocument';
 import { Language, translations, SUPPORTED_LANGUAGES, DEFAULT_ITEMS_I18N } from '../i18n/translations';
 import { 
   ClipboardCheck, 
@@ -35,7 +35,9 @@ import {
   Sparkles,
   ShieldCheck,
   Clock,
-  BookOpen
+  BookOpen,
+  Download,
+  Loader2
 } from 'lucide-react';
 
 export interface InspectionMonthInfo {
@@ -126,6 +128,18 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
 
   // View Mode: 'matrix' (ตารางตรวจ) vs 'print' (หน้าพิมพ์แบบตรวจเช็ค FM-MN01-04)
   const [activeView, setActiveView] = useState<'matrix' | 'print'>('matrix');
+  const printableDocRef = useRef<PrintableInspectionDocumentHandle>(null);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const handleDirectExportPdf = async () => {
+    if (!printableDocRef.current) return;
+    setIsExportingPdf(true);
+    try {
+      await printableDocRef.current.exportPdf();
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
 
   // Modal State for Quick Daily Check
   const [showQuickCheckModal, setShowQuickCheckModal] = useState(false);
@@ -414,60 +428,61 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
 
   const daysArray = Array.from({ length: 31 }, (_, i) => i + 1);
 
-  if (activeView === 'print') {
-    const sheetToUse = currentSheet || sheets.find((s) => s.machineId === selectedMachineId) || sheets[0];
-    return (
-      <div className="space-y-4 print:space-y-0">
-        {/* Sub-tab navigation inside Daily Inspection */}
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 flex flex-wrap items-center justify-between gap-3 print:hidden no-print">
-          <div className="flex items-center gap-1.5 bg-slate-200/90 p-1 rounded-xl text-xs">
+  const sheetToUse = currentSheet || sheets.find((s) => s.machineId === selectedMachineId) || sheets[0];
+
+  return (
+    <>
+      {sheetToUse && (
+        <div className={activeView === 'print' ? 'space-y-4 print:space-y-0' : 'hidden'}>
+          {/* Sub-tab navigation inside Daily Inspection */}
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 flex flex-wrap items-center justify-between gap-3 print:hidden no-print">
+            <div className="flex items-center gap-1.5 bg-slate-200/90 p-1 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setActiveView('matrix')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-slate-700 hover:text-slate-900 transition cursor-pointer"
+              >
+                <ClipboardCheck className="w-4 h-4" />
+                <span>ตารางตรวจเช็ค (Matrix Grid)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('print')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold bg-white text-blue-600 shadow-xs transition cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>หน้าพิมพ์แบบตรวจเช็ค (FM-MN01-04)</span>
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setActiveView('matrix')}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-medium text-slate-700 hover:text-slate-900 transition cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-2xs transition cursor-pointer"
             >
-              <ClipboardCheck className="w-4 h-4" />
-              <span>ตารางตรวจเช็ค (Matrix Grid)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('print')}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold bg-white text-blue-600 shadow-xs transition cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              <span>หน้าพิมพ์แบบตรวจเช็ค (FM-MN01-04)</span>
+              <ChevronLeft className="w-4 h-4" />
+              <span>กลับไปยังตารางตรวจเช็ค</span>
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setActiveView('matrix')}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl shadow-2xs transition cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>กลับไปยังตารางตรวจเช็ค</span>
-          </button>
+          <PrintableInspectionDocument
+            ref={printableDocRef}
+            sheet={sheetToUse}
+            allMachines={machines}
+            allSheets={sheets}
+            onSelectSheet={(s) => {
+              onSelectMachine(s.machineId);
+              onSelectMonth(s.month);
+            }}
+            selectedMonth={selectedMonth}
+            onSelectMonth={onSelectMonth}
+            onBack={() => setActiveView('matrix')}
+            onUpdateMachine={onUpdateMachine}
+          />
         </div>
+      )}
 
-        <PrintableInspectionDocument
-          sheet={sheetToUse}
-          allMachines={machines}
-          allSheets={sheets}
-          onSelectSheet={(s) => {
-            onSelectMachine(s.machineId);
-            onSelectMonth(s.month);
-          }}
-          selectedMonth={selectedMonth}
-          onSelectMonth={onSelectMonth}
-          onBack={() => setActiveView('matrix')}
-          onUpdateMachine={onUpdateMachine}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
+      <div className={activeView === 'matrix' ? 'max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4' : 'hidden'}>
       
       {/* Sub-tab switcher inside Daily Inspection */}
       <div className="flex items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs print:hidden no-print">
@@ -595,16 +610,28 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
             <span>{t.todayCheckButton} ({t.modalDateLabel} {currentDayNum})</span>
           </button>
 
-          {/* Print button switches to print view inside this page */}
-          {currentSheet && (
-            <button
-              onClick={() => setActiveView('print')}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
-              title="พิมพ์แบบตรวจเช็ค FM-MN01-04"
-            >
-              <Printer className="w-4 h-4" />
-              <span>{t.printA4Button}</span>
-            </button>
+          {/* Direct PDF Export + Print View switch */}
+          {(currentSheet || sheetToUse) && (
+            <>
+              <button
+                type="button"
+                onClick={handleDirectExportPdf}
+                disabled={isExportingPdf}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
+                title="บันทึกแบบตรวจเช็คประจำวัน FM-MN01-04 เป็นไฟล์ PDF (1 หน้า) ทันที"
+              >
+                {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                <span>{isExportingPdf ? 'กำลังสร้าง PDF...' : 'บันทึกเป็น PDF (FM-MN01-04)'}</span>
+              </button>
+              <button
+                onClick={() => setActiveView('print')}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+                title="พิมพ์แบบตรวจเช็ค FM-MN01-04"
+              >
+                <Printer className="w-4 h-4" />
+                <span>{t.printA4Button}</span>
+              </button>
+            </>
           )}
 
           {/* Guide SOP Button */}
@@ -1570,5 +1597,6 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
         </div>
       )}
     </div>
+    </>
   );
 };
