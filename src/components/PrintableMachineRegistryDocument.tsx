@@ -37,7 +37,8 @@ export const PrintableMachineRegistryDocument: React.FC<PrintableMachineRegistry
     setIsDownloadingPdf(true);
     await exportElementToPdf(
       documentRef.current,
-      'รายชื่อทะเบียนเครื่องมือ-เครื่องจักร_FM-MN01-01.pdf'
+      'รายชื่อทะเบียนเครื่องมือ-เครื่องจักร_FM-MN01-01.pdf',
+      { orientation: 'portrait', fitToOnePage: true, marginMm: 6 }
     );
     setIsDownloadingPdf(false);
   };
@@ -115,46 +116,52 @@ export const PrintableMachineRegistryDocument: React.FC<PrintableMachineRegistry
         </div>
       </div>
 
-      {/* Official Form FM-MN01-01 Document matching Image 2 */}
+      {/* Official Form FM-MN01-01 Document (1 Page A4 Portrait) */}
       <div 
         ref={documentRef}
         id="pdf-registry-container"
-        className="max-w-[900px] mx-auto bg-white p-8 sm:p-12 shadow-lg rounded-xl border border-slate-300 print:shadow-none print:border-none print:p-0 print:max-w-none text-slate-900 font-sans"
+        className="max-w-[900px] mx-auto bg-white p-6 sm:p-8 shadow-lg rounded-xl border border-slate-300 print:shadow-none print:border-none print:p-0 print:max-w-none text-slate-900 font-sans"
       >
-        {/* Header Section */}
-        <div className="relative mb-3 flex items-start justify-between">
-          <div className="pt-1">
+        {/* Header Section with Document Control Box */}
+        <div className="mb-3 flex items-center justify-between gap-3 border-b-2 border-slate-900 pb-2.5">
+          <div className="shrink-0">
             <KochLogo size="md" variant="full" />
           </div>
 
-          <div className="flex-1 text-center pr-12">
-            <h1 className="text-base sm:text-lg font-bold tracking-tight text-slate-900">
+          <div className="flex-1 text-center">
+            <h1 className="text-sm sm:text-base font-bold tracking-tight text-slate-900">
               บริษัท โค้ช แพคเกจจิ้ง แอนด์ แพคกิ้ง เซอร์วิสเซส จำกัด
             </h1>
-            <h2 className="text-sm sm:text-base font-bold text-slate-800 mt-1">
-              รายชื่อทะเบียนเครื่องมือ-เครื่องจักร
+            <h2 className="text-xs sm:text-sm font-bold text-slate-800 mt-0.5">
+              รายชื่อทะเบียนเครื่องมือ-เครื่องจักร (โรงงานบางแสน BS)
             </h2>
+          </div>
+
+          <div className="shrink-0 border border-slate-900 rounded px-2.5 py-1.5 bg-slate-50 text-[10px] font-mono leading-snug text-right">
+            <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-01</div>
+            <div>แก้ไขครั้งที่: Rev.00 • Date 19/10/2026</div>
+            <div>หน้าที่: 1 / 1</div>
           </div>
         </div>
 
-        {/* Official Registry Table matching Image 2 */}
-        <div className="border-2 border-slate-900 overflow-hidden mt-4">
-          <table className="w-full text-xs border-collapse">
+        {/* Official Registry Table matching FM-MN01-01 */}
+        <div className="border-2 border-slate-900 overflow-hidden mt-2">
+          <table className="w-full text-[11px] border-collapse">
             <thead>
               <tr className="border-b-2 border-slate-900 bg-slate-100 font-bold text-slate-900 text-center">
-                <th className="border-r border-slate-900 py-1.5 px-2 w-14 text-center">
+                <th className="border-r border-slate-900 py-1 px-2 w-12 text-center">
                   ลำดับ
                 </th>
-                <th className="border-r border-slate-900 py-1.5 px-3 w-36 text-center">
+                <th className="border-r border-slate-900 py-1 px-2.5 w-32 text-center">
                   รหัสเครื่องมือ
                 </th>
-                <th className="border-r border-slate-900 py-1.5 px-3 text-center">
+                <th className="border-r border-slate-900 py-1 px-2.5 text-center">
                   ชื่อเครื่อง
                 </th>
-                <th className="border-r border-slate-900 py-1.5 px-3 w-48 text-center">
+                <th className="border-r border-slate-900 py-1 px-2.5 w-44 text-center">
                   Model
                 </th>
-                <th className="py-1.5 px-3 w-36 text-center">
+                <th className="py-1 px-2.5 w-32 text-center">
                   Serial No.
                 </th>
               </tr>
@@ -165,13 +172,13 @@ export const PrintableMachineRegistryDocument: React.FC<PrintableMachineRegistry
                   key={m.id || index}
                   className="border-b border-slate-400 hover:bg-slate-50/60 transition"
                 >
-                  <td className="border-r border-slate-900 py-1.5 px-2 text-center font-medium">
+                  <td className="border-r border-slate-900 py-1 px-2 text-center font-medium">
                     {m.no || index + 1}
                   </td>
-                  <td className="border-r border-slate-900 py-1.5 px-3 text-left font-mono font-medium">
+                  <td className="border-r border-slate-900 py-1 px-2.5 text-left font-mono font-medium">
                     {m.code}
                   </td>
-                  <td className="border-r border-slate-900 py-1.5 px-3 text-left">
+                  <td className="border-r border-slate-900 py-1 px-2.5 text-left">
                     <span className="font-medium text-slate-900">{m.name}</span>
                     {m.category === 'office' && (
                       <span className="ml-2 text-[10px] text-slate-400 print:hidden">

@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { MachineAsset, MaintenanceTicket } from '../types/ticket';
 import { MachineBOMItem } from '../types/bom';
+import { compressImageFile } from '../utils/imageCompressor';
 import { SparePartItemMaster, StockTransaction } from '../types/sparePart';
 import { MachineBOMManager } from './MachineBOMManager';
 import { SparePartsManager } from './SparePartsManager';
@@ -146,37 +147,37 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
   const [showUrlFallback, setShowUrlFallback] = useState(false);
   const [quickUploadSuccessId, setQuickUploadSuccessId] = useState<string | null>(null);
 
-  const handleMachinePhotoFile = (file: File) => {
+  const handleMachinePhotoFile = async (file: File) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert('กรุณาเลือกไฟล์รูปภาพที่ถูกต้อง (PNG, JPG, JPEG, WEBP)');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        setFormImageUrl(e.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 800, 0.75);
+      if (compressed) setFormImageUrl(compressed);
+    } catch (err) {
+      console.warn('Failed compressing machine photo:', err);
+    }
   };
 
-  const handleQuickUploadForMachine = (machineId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleQuickUploadForMachine = async (machineId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert('กรุณาเลือกไฟล์รูปภาพที่ถูกต้อง (PNG, JPG, JPEG, WEBP)');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      if (event.target?.result) {
-        await onUpdateMachine(machineId, { imageUrl: event.target.result as string, photoUrl: event.target.result as string });
+    try {
+      const compressed = await compressImageFile(file, 800, 0.75);
+      if (compressed) {
+        await onUpdateMachine(machineId, { imageUrl: compressed, photoUrl: compressed });
         setQuickUploadSuccessId(machineId);
         setTimeout(() => setQuickUploadSuccessId(null), 3000);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Failed compressing quick machine photo:', err);
+    }
     e.target.value = '';
   };
 
@@ -185,7 +186,8 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
     setIsDownloadingPdf(true);
     await exportElementToPdf(
       pdfExportRef.current,
-      'รายชื่อทะเบียนเครื่องมือ-เครื่องจักร_FM-MN01-01.pdf'
+      'รายชื่อทะเบียนเครื่องมือ-เครื่องจักร_FM-MN01-01.pdf',
+      { orientation: 'portrait', fitToOnePage: true, marginMm: 6 }
     );
     setIsDownloadingPdf(false);
   };
@@ -1719,54 +1721,59 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
         </div>
       )}
 
-      {/* Hidden container for 1-click PDF download generation matching FM-MN01-01 */}
+      {/* Hidden container for 1-click PDF download generation matching FM-MN01-01 (1 Page A4 Portrait) */}
       <div
         ref={pdfExportRef}
         id="pdf-registry-export-container"
-        className="fixed -left-[9999px] top-0 w-[900px] bg-white p-8 border border-slate-300 text-slate-900 font-sans"
+        className="fixed -left-[9999px] top-0 w-[900px] bg-white p-6 border border-slate-300 text-slate-900 font-sans"
         style={{ width: '900px' }}
       >
-        <div className="relative mb-3 flex items-start justify-between">
-          <div className="pt-1">
+        <div className="mb-3 flex items-center justify-between gap-3 border-b-2 border-slate-900 pb-2.5">
+          <div className="shrink-0">
             <KochLogo size="md" variant="full" />
           </div>
-          <div className="flex-1 text-center pr-12">
+          <div className="flex-1 text-center">
             <h1 className="text-base font-bold tracking-tight text-slate-900">
               บริษัท โค้ช แพคเกจจิ้ง แอนด์ แพคกิ้ง เซอร์วิสเซส จำกัด
             </h1>
-            <h2 className="text-sm font-bold text-slate-800 mt-1">
-              รายชื่อทะเบียนเครื่องมือ-เครื่องจักร
+            <h2 className="text-sm font-bold text-slate-800 mt-0.5">
+              รายชื่อทะเบียนเครื่องมือ-เครื่องจักร (โรงงานบางแสน BS)
             </h2>
+          </div>
+          <div className="shrink-0 border border-slate-900 rounded px-2.5 py-1.5 bg-slate-50 text-[10px] font-mono leading-snug text-right">
+            <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-01</div>
+            <div>แก้ไขครั้งที่: Rev.00 • Date 19/10/2026</div>
+            <div>หน้าที่: 1 / 1</div>
           </div>
         </div>
 
-        <div className="border-2 border-slate-900 overflow-hidden mt-4">
-          <table className="w-full text-xs border-collapse">
+        <div className="border-2 border-slate-900 overflow-hidden mt-2">
+          <table className="w-full text-[11px] border-collapse">
             <thead>
               <tr className="border-b-2 border-slate-900 bg-slate-100 font-bold text-slate-900 text-center">
-                <th className="border-r border-slate-900 py-1.5 px-2 w-14 text-center">ลำดับ</th>
-                <th className="border-r border-slate-900 py-1.5 px-3 w-36 text-center">รหัสเครื่องมือ</th>
-                <th className="border-r border-slate-900 py-1.5 px-3 text-center">ชื่อเครื่อง</th>
-                <th className="border-r border-slate-900 py-1.5 px-3 w-48 text-center">Model</th>
-                <th className="py-1.5 px-3 w-36 text-center">Serial No.</th>
+                <th className="border-r border-slate-900 py-1 px-2 w-12 text-center">ลำดับ</th>
+                <th className="border-r border-slate-900 py-1 px-2.5 w-32 text-center">รหัสเครื่องมือ</th>
+                <th className="border-r border-slate-900 py-1 px-2.5 text-center">ชื่อเครื่อง</th>
+                <th className="border-r border-slate-900 py-1 px-2.5 w-44 text-center">Model</th>
+                <th className="py-1 px-2.5 w-32 text-center">Serial No.</th>
               </tr>
             </thead>
             <tbody>
               {filteredMachines.map((m, index) => (
                 <tr key={m.id || index} className="border-b border-slate-400">
-                  <td className="border-r border-slate-900 py-1.5 px-2 text-center font-medium">
+                  <td className="border-r border-slate-900 py-1 px-2 text-center font-medium">
                     {m.no || index + 1}
                   </td>
-                  <td className="border-r border-slate-900 py-1.5 px-3 text-left font-mono font-medium">
+                  <td className="border-r border-slate-900 py-1 px-2.5 text-left font-mono font-medium">
                     {m.code}
                   </td>
-                  <td className="border-r border-slate-900 py-1.5 px-3 text-left">
+                  <td className="border-r border-slate-900 py-1 px-2.5 text-left">
                     <span className="font-medium text-slate-900">{m.name}</span>
                   </td>
-                  <td className="border-r border-slate-900 py-1.5 px-3 text-left">
+                  <td className="border-r border-slate-900 py-1 px-2.5 text-left">
                     {m.model && m.model !== '-' ? m.model : ''}
                   </td>
-                  <td className="py-1.5 px-3 text-left font-mono">
+                  <td className="py-1 px-2.5 text-left font-mono">
                     {m.serialNo && m.serialNo !== '-' ? m.serialNo : ''}
                   </td>
                 </tr>

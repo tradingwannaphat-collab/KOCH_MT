@@ -22,9 +22,16 @@ export function getMachineDefaultItems(machineCode: string, machineName: string)
   return JSON.parse(JSON.stringify(DEFAULT_INSPECTION_ITEMS));
 }
 
-export function createEmptyMonthSheet(machineId: string, month: string = '2026-10'): MachineMonthlyCheckSheet {
-  const machine = initialMachines.find((m) => m.id === machineId) || initialMachines[0];
-  const items = getMachineDefaultItems(machine.code, machine.name);
+export function createEmptyMonthSheet(
+  machineId: string,
+  month: string = '2026-10',
+  machineInfo?: { id: string; code?: string; tagCode?: string; name?: string; department?: string }
+): MachineMonthlyCheckSheet {
+  const machine = initialMachines.find((m) => m.id === machineId) || machineInfo || initialMachines[0];
+  const machineCode = machine.code || machineId;
+  const machineName = machine.name || 'เครื่องจักร';
+  const tagCode = machine.tagCode || machineCode;
+  const items = getMachineDefaultItems(machineCode, machineName);
   
   const days: Record<number, DayCheckRecord> = {};
   for (let d = 1; d <= 31; d++) {
@@ -43,11 +50,11 @@ export function createEmptyMonthSheet(machineId: string, month: string = '2026-1
   }
 
   return {
-    id: `sheet-${machine.id}-${month}`,
-    machineId: machine.id,
-    machineNo: machine.code,
-    machineName: `${machine.tagCode} : ${machine.name}`,
-    department: 'ฝ่ายผลิต',
+    id: `sheet-${machineId}-${month}`,
+    machineId,
+    machineNo: machineCode,
+    machineName: `${tagCode} : ${machineName}`,
+    department: machine.department || 'ฝ่ายผลิต',
     month,
     items,
     days,

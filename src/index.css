@@ -10,16 +10,19 @@
   }
 }
 
-/* Custom Print styles for official KOCH FM-MN01-03 document */
+/* Custom Print styles for official KOCH documents */
 @media print {
-  body {
+  html, body {
     background-color: white !important;
     color: black !important;
     padding: 0 !important;
     margin: 0 !important;
+    width: 100% !important;
   }
 
-  .no-print {
+  .no-print,
+  header,
+  nav.fixed {
     display: none !important;
   }
 
@@ -29,6 +32,7 @@
 
   .print-page {
     width: 100% !important;
+    max-width: none !important;
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
@@ -37,7 +41,7 @@
 
   @page {
     size: A4 portrait;
-    margin: 10mm;
+    margin: 6mm;
   }
 }
 

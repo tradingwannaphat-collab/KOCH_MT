@@ -4,6 +4,8 @@ import { initialMachines } from '../data/initialMachines';
 import { initialTickets } from '../data/initialTickets';
 import { safeApiCall } from '../utils/apiClient';
 
+import { savePersistentCache, loadSyncCache, loadAsyncCache, idbDelete } from '../utils/clientStorage';
+
 // Simple sound synthesis for notifications on real-time events
 function playNotificationSound(type: 'new' | 'update' = 'update') {
   try {
@@ -41,21 +43,14 @@ const CACHE_KEY_MACHINES = 'koch_machines_cache_v2';
 
 export function useRealtimeTickets() {
   const [tickets, setTickets] = useState<MaintenanceTicket[]>(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY_TICKETS);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
+    const cached = loadSyncCache<MaintenanceTicket[]>(CACHE_KEY_TICKETS);
+    if (Array.isArray(cached) && cached.length > 0) return cached;
     return initialTickets;
   });
 
   const [machines, setMachines] = useState<MachineAsset[]>(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY_MACHINES);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {}
+    const cached = loadSyncCache<MachineAsset[]>(CACHE_KEY_MACHINES);
+    if (Array.isArray(cached) && cached.length > 0) return cached;
     return initialMachines;
   });
 
@@ -68,37 +63,67 @@ export function useRealtimeTickets() {
   const soundEnabledRef = useRef(soundEnabled);
   soundEnabledRef.current = soundEnabled;
 
-  // Persist tickets to localStorage
+  const hasLocalTicketsMutationRef = useRef(false);
+  const hasBackendTicketsSyncedRef = useRef(false);
+  const hasLocalMachinesMutationRef = useRef(false);
+  const hasBackendMachinesSyncedRef = useRef(false);
+  const isStaticHostRef = useRef(false);
+
+  // Hydrate from IndexedDB on mount (handles larger datasets with photos beyond 5MB localStorage limit)
   useEffect(() => {
-    try {
-      if (tickets && tickets.length > 0) {
-        localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(tickets));
+    let active = true;
+    loadAsyncCache<MaintenanceTicket[]>(CACHE_KEY_TICKETS).then((stored) => {
+      if (!active) return;
+      if (
+        Array.isArray(stored) &&
+        stored.length > 0 &&
+        !hasLocalTicketsMutationRef.current &&
+        !hasBackendTicketsSyncedRef.current
+      ) {
+        setTickets(stored);
       }
-    } catch (e) {}
+    });
+    loadAsyncCache<MachineAsset[]>(CACHE_KEY_MACHINES).then((stored) => {
+      if (!active) return;
+      if (
+        Array.isArray(stored) &&
+        stored.length > 0 &&
+        !hasLocalMachinesMutationRef.current &&
+        !hasBackendMachinesSyncedRef.current
+      ) {
+        setMachines(stored);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Persist tickets to IndexedDB + localStorage
+  useEffect(() => {
+    if (tickets && tickets.length > 0) {
+      savePersistentCache(CACHE_KEY_TICKETS, tickets, true);
+    }
   }, [tickets]);
 
-  // Persist machines to localStorage
+  // Persist machines to IndexedDB + localStorage
   useEffect(() => {
-    try {
-      if (machines && machines.length > 0) {
-        localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(machines));
-      }
-    } catch (e) {}
+    if (machines && machines.length > 0) {
+      savePersistentCache(CACHE_KEY_MACHINES, machines, true);
+    }
   }, [machines]);
 
   // Fetch initial list
   const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch('/api/tickets');
-      const contentType = res.headers.get('content-type');
-      if (res.ok && contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data.tickets && data.tickets.length > 0) {
-          setTickets(data.tickets);
-          try {
-            localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(data.tickets));
-          } catch (e) {}
-        }
+      const apiRes = await safeApiCall<{ tickets?: MaintenanceTicket[] }>('/api/tickets');
+      if (apiRes.ok && apiRes.data?.tickets && apiRes.data.tickets.length > 0) {
+        hasBackendTicketsSyncedRef.current = true;
+        isStaticHostRef.current = false;
+        setTickets(apiRes.data.tickets);
+        savePersistentCache(CACHE_KEY_TICKETS, apiRes.data.tickets, true);
+      } else if (!apiRes.ok) {
+        isStaticHostRef.current = true;
       }
     } catch (err) {
       console.warn('Failed to fetch tickets:', err);
@@ -109,16 +134,11 @@ export function useRealtimeTickets() {
 
   const fetchMachines = useCallback(async () => {
     try {
-      const res = await fetch('/api/machines');
-      const contentType = res.headers.get('content-type');
-      if (res.ok && contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data.machines && data.machines.length > 0) {
-          setMachines(data.machines);
-          try {
-            localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(data.machines));
-          } catch (e) {}
-        }
+      const apiRes = await safeApiCall<{ machines?: MachineAsset[] }>('/api/machines');
+      if (apiRes.ok && apiRes.data?.machines && apiRes.data.machines.length > 0) {
+        hasBackendMachinesSyncedRef.current = true;
+        setMachines(apiRes.data.machines);
+        savePersistentCache(CACHE_KEY_MACHINES, apiRes.data.machines, true);
       }
     } catch (err) {
       console.warn('Failed to fetch machines:', err);
@@ -127,11 +147,11 @@ export function useRealtimeTickets() {
 
   // Connect SSE
   useEffect(() => {
-    fetchTickets();
-
-    let retryTimeout: NodeJS.Timeout;
+    let retryTimeout: ReturnType<typeof setTimeout>;
+    let pollInterval: ReturnType<typeof setInterval>;
 
     function connectSSE() {
+      if (isStaticHostRef.current) return;
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
@@ -140,10 +160,12 @@ export function useRealtimeTickets() {
       eventSourceRef.current = es;
 
       es.onopen = () => {
+        isStaticHostRef.current = false;
         setIsConnected(true);
       };
 
       es.addEventListener('connected', () => {
+        isStaticHostRef.current = false;
         setIsConnected(true);
       });
 
@@ -240,19 +262,24 @@ export function useRealtimeTickets() {
       es.onerror = () => {
         setIsConnected(false);
         es.close();
-        // Retry connection after 5 seconds
-        retryTimeout = setTimeout(connectSSE, 5000);
+        // On static hosts (like Vercel) without backend API, do not spam reconnect loops
+        if (!isStaticHostRef.current) {
+          retryTimeout = setTimeout(connectSSE, 5000);
+        }
       };
     }
 
-    fetchMachines();
-    connectSSE();
-
-    // Fallback polling every 10s to ensure consistency
-    const pollInterval = setInterval(() => {
-      fetchTickets();
-      fetchMachines();
-    }, 10000);
+    fetchTickets().then(() => {
+      if (!isStaticHostRef.current) {
+        fetchMachines();
+        connectSSE();
+        // Fallback polling every 10s only when backend API is reachable
+        pollInterval = setInterval(() => {
+          fetchTickets();
+          fetchMachines();
+        }, 10000);
+      }
+    });
 
     return () => {
       clearTimeout(retryTimeout);
@@ -361,11 +388,10 @@ export function useRealtimeTickets() {
 
       const finalTicket = (apiRes.ok && apiRes.data?.success && apiRes.data.ticket) ? apiRes.data.ticket : newTicket;
 
+      hasLocalTicketsMutationRef.current = true;
       setTickets((prev) => {
         const next = [finalTicket, ...prev.filter((t) => t.id !== finalTicket.id)];
-        try {
-          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_TICKETS, next, true);
         return next;
       });
 
@@ -383,11 +409,10 @@ export function useRealtimeTickets() {
   // Update ticket
   const updateTicket = async (ticketId: string, updates: Partial<MaintenanceTicket>) => {
     try {
+      hasLocalTicketsMutationRef.current = true;
       setTickets((prev) => {
         const next = prev.map((t) => (t.id === ticketId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t));
-        try {
-          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_TICKETS, next, true);
         return next;
       });
 
@@ -398,7 +423,11 @@ export function useRealtimeTickets() {
       });
 
       if (apiRes.ok && apiRes.data?.success && apiRes.data.ticket) {
-        setTickets((prev) => prev.map((t) => (t.id === ticketId ? apiRes.data!.ticket! : t)));
+        setTickets((prev) => {
+          const next = prev.map((t) => (t.id === ticketId ? apiRes.data!.ticket! : t));
+          savePersistentCache(CACHE_KEY_TICKETS, next, true);
+          return next;
+        });
         return { success: true, ticket: apiRes.data.ticket };
       }
 
@@ -422,6 +451,7 @@ export function useRealtimeTickets() {
     }
   ) => {
     try {
+      hasLocalTicketsMutationRef.current = true;
       const now = new Date();
       const newLog: ProgressLog = {
         id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -446,9 +476,7 @@ export function useRealtimeTickets() {
             updatedAt: now.toISOString()
           };
         });
-        try {
-          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_TICKETS, next, true);
         return next;
       });
 
@@ -462,7 +490,11 @@ export function useRealtimeTickets() {
       );
 
       if (apiRes.ok && apiRes.data?.success && apiRes.data.ticket) {
-        setTickets((prev) => prev.map((t) => (t.id === ticketId ? apiRes.data!.ticket! : t)));
+        setTickets((prev) => {
+          const next = prev.map((t) => (t.id === ticketId ? apiRes.data!.ticket! : t));
+          savePersistentCache(CACHE_KEY_TICKETS, next, true);
+          return next;
+        });
         return { success: true, ticket: apiRes.data.ticket, log: apiRes.data.log || newLog };
       }
 
@@ -476,6 +508,7 @@ export function useRealtimeTickets() {
   // Delete progress log
   const deleteProgressLog = async (ticketId: string, logId: string) => {
     try {
+      hasLocalTicketsMutationRef.current = true;
       setTickets((prev) => {
         const next = prev.map((t) => {
           if (t.id !== ticketId) return t;
@@ -485,9 +518,7 @@ export function useRealtimeTickets() {
             updatedAt: new Date().toISOString()
           };
         });
-        try {
-          localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_TICKETS, next, true);
         return next;
       });
 
@@ -502,6 +533,7 @@ export function useRealtimeTickets() {
   // Machine Actions
   const createMachine = async (machineData: Partial<MachineAsset>) => {
     try {
+      hasLocalMachinesMutationRef.current = true;
       const newMach: MachineAsset = {
         id: machineData.id || `m-${Date.now()}`,
         no: machineData.no || (machines.length + 1),
@@ -528,9 +560,7 @@ export function useRealtimeTickets() {
 
       setMachines((prev) => {
         const next = [...prev, newMach];
-        try {
-          localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_MACHINES, next, true);
         return next;
       });
 
@@ -549,11 +579,10 @@ export function useRealtimeTickets() {
 
   const updateMachine = async (id: string, updates: Partial<MachineAsset>) => {
     try {
+      hasLocalMachinesMutationRef.current = true;
       setMachines((prev) => {
         const next = prev.map((m) => (m.id === id ? { ...m, ...updates } : m));
-        try {
-          localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_MACHINES, next, true);
         return next;
       });
 
@@ -564,7 +593,11 @@ export function useRealtimeTickets() {
       });
 
       if (apiRes.ok && apiRes.data?.success && apiRes.data.machine) {
-        setMachines((prev) => prev.map((m) => (m.id === id ? apiRes.data!.machine! : m)));
+        setMachines((prev) => {
+          const next = prev.map((m) => (m.id === id ? apiRes.data!.machine! : m));
+          savePersistentCache(CACHE_KEY_MACHINES, next, true);
+          return next;
+        });
         return { success: true, machine: apiRes.data.machine };
       }
 
@@ -577,11 +610,10 @@ export function useRealtimeTickets() {
 
   const deleteMachine = async (id: string) => {
     try {
+      hasLocalMachinesMutationRef.current = true;
       setMachines((prev) => {
         const next = prev.filter((m) => m.id !== id);
-        try {
-          localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_MACHINES, next, true);
         return next;
       });
 
@@ -596,12 +628,35 @@ export function useRealtimeTickets() {
   const resetDemoData = async () => {
     try {
       await safeApiCall('/api/reset-data', { method: 'POST' });
+      hasLocalTicketsMutationRef.current = true;
+      hasLocalMachinesMutationRef.current = true;
       setTickets(initialTickets);
       setMachines(initialMachines);
-      try {
-        localStorage.setItem(CACHE_KEY_TICKETS, JSON.stringify(initialTickets));
-        localStorage.setItem(CACHE_KEY_MACHINES, JSON.stringify(initialMachines));
-      } catch (e) {}
+
+      const allCacheKeys = [
+        CACHE_KEY_TICKETS,
+        CACHE_KEY_MACHINES,
+        'koch_inspection_sheets_cache_v2',
+        'koch_inspections_selected_month',
+        'koch_inspections_selected_machine',
+        'koch_bom_items_cache_v2',
+        'koch_spare_parts_cache_v2',
+        'koch_stock_tx_cache_v2',
+        'koch_pm_plans_2026',
+        'koch_pm_plans_2027'
+      ];
+      await Promise.all(allCacheKeys.map((k) => idbDelete(k)));
+      for (const k of allCacheKeys) {
+        try {
+          localStorage.removeItem(k);
+        } catch (e) {}
+      }
+
+      await Promise.all([
+        savePersistentCache(CACHE_KEY_TICKETS, initialTickets, true),
+        savePersistentCache(CACHE_KEY_MACHINES, initialMachines, true)
+      ]);
+      window.location.reload();
     } catch (err) {
       console.error('Failed to reset demo data:', err);
     }

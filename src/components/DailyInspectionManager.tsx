@@ -147,6 +147,19 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
   const [approverInput, setApproverInput] = useState(currentSheet?.approverName || 'สิรภพ ชูสิทธิ์ (ผู้จัดการโรงงาน บางแสน BS)');
   const [isSavingDetails, setIsSavingDetails] = useState(false);
 
+  // Machine thumbnail fallback state & save confirmation toast
+  const [imageError, setImageError] = useState(false);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+
+  const triggerSaveToast = (message: string) => {
+    setSaveToast(message);
+    setTimeout(() => setSaveToast(null), 2500);
+  };
+
+  useEffect(() => {
+    setImageError(false);
+  }, [currentMachine?.id, currentMachine?.imageUrl]);
+
   // Sync inputs if currentSheet changes
   useEffect(() => {
     if (currentSheet) {
@@ -242,6 +255,7 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
     setIsSubmitting(false);
     if (success) {
       setShowQuickCheckModal(false);
+      triggerSaveToast(`บันทึกผลการตรวจเช็ควันที่ ${checkDay} เรียบร้อยแล้ว`);
     }
   };
 
@@ -354,6 +368,7 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
     setIsSavingItems(false);
     if (success) {
       setShowCustomizeModal(false);
+      triggerSaveToast(`บันทึกรายการตรวจของเครื่อง ${currentMachine.tagCode || currentMachine.name} แล้ว`);
     }
   };
 
@@ -361,13 +376,16 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
   const handleSaveSheetDetails = async () => {
     if (!currentSheet) return;
     setIsSavingDetails(true);
-    await onUpdateSheetDetails(
+    const success = await onUpdateSheetDetails(
       currentSheet.id,
       remarksInput,
       approverInput,
       new Date().toISOString().split('T')[0]
     );
     setIsSavingDetails(false);
+    if (success) {
+      triggerSaveToast('บันทึกหมายเหตุและการรับรองเรียบร้อยแล้ว');
+    }
   };
 
   // Parse selectedMonth (e.g. "2027-01", "2028-12", "2026-10")
@@ -399,9 +417,9 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
   if (activeView === 'print') {
     const sheetToUse = currentSheet || sheets.find((s) => s.machineId === selectedMachineId) || sheets[0];
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 print:space-y-0">
         {/* Sub-tab navigation inside Daily Inspection */}
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 flex flex-wrap items-center justify-between gap-3 print:hidden no-print">
           <div className="flex items-center gap-1.5 bg-slate-200/90 p-1 rounded-xl text-xs">
             <button
               type="button"
@@ -518,13 +536,22 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
         </div>
       </div>
 
+      {/* Save Confirmation Toast */}
+      {saveToast && (
+        <div className="fixed bottom-20 lg:bottom-6 right-4 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs font-bold animate-in fade-in slide-in-from-bottom-3">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{saveToast}</span>
+        </div>
+      )}
+
       {/* Top Banner: Official Form Identifier */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3.5">
-          {currentMachine?.imageUrl ? (
+          {currentMachine?.imageUrl && !imageError ? (
             <img
               src={currentMachine.imageUrl}
               alt={currentMachine.name}
+              onError={() => setImageError(true)}
               className="w-14 h-14 rounded-xl object-cover border border-slate-200 shadow-xs shrink-0"
             />
           ) : (
@@ -926,6 +953,7 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
                         onClick={() => {
                           if (currentMachine) {
                             onToggleCell(currentMachine.id, selectedMonth, d, item.no, status || null);
+                            triggerSaveToast(`บันทึกวันที่ ${d} ข้อ ${item.no} แล้ว`);
                           }
                         }}
                         title={`วันที่ ${d} - ข้อ ${item.no}: คลิกเพื่อเปลี่ยนสถานะ (ปกติ / ผิดปกติ / ไม่ตรวจ)`}

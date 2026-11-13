@@ -1,7 +1,8 @@
-import React from 'react';
-import { Printer, Download, ArrowLeft, CheckSquare, Square, Share2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { Printer, Download, ArrowLeft, Loader2 } from 'lucide-react';
 import { MaintenanceTicket } from '../types/ticket';
 import { KochLogo } from './KochLogo';
+import { exportElementToPdf } from '../utils/pdfExport';
 
 interface PrintableTicketDocumentProps {
   ticket: MaintenanceTicket;
@@ -16,12 +17,29 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
   allTickets = [],
   onSelectTicket
 }) => {
+  const documentRef = useRef<HTMLDivElement>(null);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
   const handlePrint = () => {
+    const prevTitle = document.title;
+    document.title = `FM-MN01-03_${ticket.ticketNo || 'ใบแจ้งซ่อม'}`;
     window.print();
+    document.title = prevTitle;
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!documentRef.current) return;
+    setIsDownloadingPdf(true);
+    await exportElementToPdf(
+      documentRef.current,
+      `FM-MN01-03_ใบแจ้งซ่อม_${ticket.ticketNo || 'TICKET'}.pdf`,
+      { orientation: 'portrait', fitToOnePage: true, marginMm: 6 }
+    );
+    setIsDownloadingPdf(false);
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 print:p-0 print:pb-0">
       {/* Top Action Bar (hidden when printing) */}
       <div className="no-print bg-white p-4 rounded-2xl border border-slate-200 shadow-xs mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -60,40 +78,59 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isDownloadingPdf}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+          >
+            {isDownloadingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            <span>{isDownloadingPdf ? 'กำลังสร้าง PDF...' : 'ดาวน์โหลดเป็น PDF (1 หน้า)'}</span>
+          </button>
+          <button
+            type="button"
             onClick={handlePrint}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-sm transition cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>พิมพ์ใบแจ้งซ่อม (Print / PDF)</span>
+            <span>พิมพ์ใบแจ้งซ่อม</span>
           </button>
         </div>
       </div>
 
-      {/* Official Form Reproduction (Matching KOCH FM-MN01-03) */}
-      <div className="print-page bg-white p-6 sm:p-10 border-2 border-black rounded-lg shadow-xl text-black font-sans leading-relaxed text-sm select-none">
+      {/* Official Form Reproduction (Matching KOCH FM-MN01-03 - 1 Page A4 Portrait) */}
+      <div
+        ref={documentRef}
+        className="print-page bg-white p-5 sm:p-7 border-2 border-black rounded-lg shadow-xl text-black font-sans leading-snug text-xs sm:text-sm select-none print:p-3 print:rounded-none"
+      >
         
         {/* Top Header Grid */}
-        <div className="grid grid-cols-12 border-b-2 border-black pb-3">
+        <div className="grid grid-cols-12 border-b-2 border-black pb-2.5">
           {/* KOCH Logo & Icon */}
           <div className="col-span-3 flex items-center">
             <KochLogo size="md" variant="full" textColor="dark" />
           </div>
 
           {/* Form Title */}
-          <div className="col-span-6 flex items-center justify-center">
+          <div className="col-span-5 flex flex-col items-center justify-center">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-center">
               ใบแจ้งซ่อม
             </h1>
+            <span className="text-[11px] font-mono text-slate-600">MAINTENANCE REPAIR REQUEST</span>
           </div>
 
-          {/* Ticket Number Box */}
-          <div className="col-span-3 border-l-2 border-black pl-3 flex flex-col justify-center">
-            <div className="text-xs">
-              <span className="font-semibold">เลขที่ : </span>
+          {/* Ticket Number & Document Control Box */}
+          <div className="col-span-4 border-l-2 border-black pl-3 flex flex-col justify-center space-y-0.5 text-[11px]">
+            <div>
+              <span className="font-semibold">หมายเลขเอกสาร : </span>
+              <span className="font-mono font-bold text-slate-900">FM-MN01-03 (Rev.00)</span>
+            </div>
+            <div>
+              <span className="font-semibold">เลขที่ใบแจ้งซ่อม : </span>
               <span className="font-mono font-bold text-sm text-blue-900">{ticket.ticketNo}</span>
             </div>
-            <div className="text-[11px] text-slate-700 mt-1 font-medium">
-              สำหรับเจ้าหน้าที่ซ่อมบำรุง
+            <div className="text-[10px] text-slate-600 flex justify-between">
+              <span>สำหรับเจ้าหน้าที่ซ่อมบำรุง</span>
+              <span className="font-mono">หน้าที่ 1 / 1</span>
             </div>
           </div>
         </div>

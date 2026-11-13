@@ -1,62 +1,62 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { MachineAnnualPMPlan, PMMonthRecord, AnnualPMStats } from '../types/pm';
 import { initialAnnualPMPlans, generateInitialAnnualPMPlans } from '../data/initialPMPlans';
 import { safeApiCall } from '../utils/apiClient';
+import { savePersistentCache, loadSyncCache, loadAsyncCache } from '../utils/clientStorage';
 
 const CACHE_KEY_PREFIX = 'koch_pm_plans_';
 
 export function useRealtimePM(initialYear: number = 2026) {
   const [selectedYear, setSelectedYear] = useState<number>(initialYear);
   const [pmPlans, setPmPlans] = useState<MachineAnnualPMPlan[]>(() => {
-    try {
-      const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${initialYear}`);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return initialAnnualPMPlans;
+    const cached = loadSyncCache<MachineAnnualPMPlan[]>(`${CACHE_KEY_PREFIX}${initialYear}`);
+    if (Array.isArray(cached) && cached.length > 0) return cached;
+    return initialYear === 2026 ? initialAnnualPMPlans : generateInitialAnnualPMPlans(initialYear);
   });
   const [loading, setLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch plans from backend for the selected year
+  const selectedYearRef = useRef(selectedYear);
+  selectedYearRef.current = selectedYear;
+  const pmPlansRef = useRef(pmPlans);
+  pmPlansRef.current = pmPlans;
+
+  // Fetch plans from backend or IndexedDB/localStorage for the selected year
   const fetchPlans = useCallback(async (year: number) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/pm-plans?year=${year}`);
-      const contentType = res.headers.get('content-type');
-      if (res.ok && contentType && contentType.includes('application/json')) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.pmPlans) && data.pmPlans.length > 0) {
-          setPmPlans(data.pmPlans);
-          try {
-            localStorage.setItem(`${CACHE_KEY_PREFIX}${year}`, JSON.stringify(data.pmPlans));
-          } catch (e) {}
-          return;
-        }
+
+      // First try IndexedDB/localStorage immediately so user edits show up without delay
+      const cached = await loadAsyncCache<MachineAnnualPMPlan[]>(`${CACHE_KEY_PREFIX}${year}`);
+      if (Array.isArray(cached) && cached.length > 0 && selectedYearRef.current === year) {
+        setPmPlans(cached);
       }
 
-      // If backend didn't supply, check localStorage or generate locally
-      try {
-        const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${year}`);
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setPmPlans(parsed);
-            return;
-          }
+      // Then check backend API if running
+      const apiRes = await safeApiCall<{ success: boolean; pmPlans?: MachineAnnualPMPlan[] }>(
+        `/api/pm-plans?year=${year}`
+      );
+      if (apiRes.ok && apiRes.data?.success && Array.isArray(apiRes.data.pmPlans) && apiRes.data.pmPlans.length > 0) {
+        savePersistentCache(`${CACHE_KEY_PREFIX}${year}`, apiRes.data.pmPlans, true);
+        if (selectedYearRef.current === year) {
+          setPmPlans(apiRes.data.pmPlans);
         }
-      } catch (e) {}
+        return;
+      }
 
-      // Fallback: generate default plan for the year
+      // If cached data was present, keep it
+      if (Array.isArray(cached) && cached.length > 0) {
+        return;
+      }
+
+      // Otherwise fallback: generate default plan for the year and persist it
       const generated = year === 2026 ? initialAnnualPMPlans : generateInitialAnnualPMPlans(year);
-      setPmPlans(generated);
-      try {
-        localStorage.setItem(`${CACHE_KEY_PREFIX}${year}`, JSON.stringify(generated));
-      } catch (e) {}
+      savePersistentCache(`${CACHE_KEY_PREFIX}${year}`, generated, true);
+      if (selectedYearRef.current === year) {
+        setPmPlans(generated);
+      }
     } catch (err: any) {
       console.warn('[KOCH PM] Error fetching plans from API:', err);
     } finally {
@@ -70,38 +70,45 @@ export function useRealtimePM(initialYear: number = 2026) {
 
   // Listen to SSE broadcast for realtime updates across browsers
   useEffect(() => {
-    const eventSource = new EventSource('/api/events');
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('/api/events');
 
-    eventSource.addEventListener('pm_plan_updated', (event: any) => {
-      try {
-        const updatedPlan: MachineAnnualPMPlan = JSON.parse(event.data);
-        if (updatedPlan.year === selectedYear) {
-          setPmPlans((prev) => {
-            const index = prev.findIndex((p) => p.id === updatedPlan.id);
-            if (index === -1) return [...prev, updatedPlan];
-            const clone = [...prev];
-            clone[index] = updatedPlan;
-            try {
-              localStorage.setItem(`${CACHE_KEY_PREFIX}${selectedYear}`, JSON.stringify(clone));
-            } catch (e) {}
-            return clone;
-          });
-        }
-      } catch (e) {}
-    });
+      eventSource.addEventListener('pm_plan_updated', (event: MessageEvent) => {
+        try {
+          const updatedPlan: MachineAnnualPMPlan = JSON.parse(event.data);
+          if (updatedPlan.year === selectedYearRef.current) {
+            setPmPlans((prev) => {
+              const index = prev.findIndex((p) => p.id === updatedPlan.id);
+              const clone = index === -1 ? [...prev, updatedPlan] : [...prev];
+              if (index !== -1) clone[index] = updatedPlan;
+              savePersistentCache(`${CACHE_KEY_PREFIX}${updatedPlan.year}`, clone, true);
+              return clone;
+            });
+          }
+        } catch (e) {}
+      });
 
-    eventSource.addEventListener('data_reset', (event: any) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (Array.isArray(data.pmPlans)) {
-          const forYear = data.pmPlans.filter((p: any) => p.year === selectedYear);
-          if (forYear.length > 0) setPmPlans(forYear);
-        }
-      } catch (e) {}
-    });
+      eventSource.addEventListener('data_reset', (event: MessageEvent) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (Array.isArray(data.pmPlans)) {
+            const forYear = data.pmPlans.filter((p: any) => p.year === selectedYearRef.current);
+            if (forYear.length > 0) {
+              setPmPlans(forYear);
+              savePersistentCache(`${CACHE_KEY_PREFIX}${selectedYearRef.current}`, forYear, true);
+            }
+          }
+        } catch (e) {}
+      });
+
+      eventSource.onerror = () => {
+        eventSource?.close();
+      };
+    } catch (e) {}
 
     return () => {
-      eventSource.close();
+      eventSource?.close();
     };
   }, [selectedYear]);
 
@@ -109,9 +116,11 @@ export function useRealtimePM(initialYear: number = 2026) {
   const recordActualPM = useCallback(async (planId: string, month: number, payload: Partial<PMMonthRecord>) => {
     try {
       setIsSaving(true);
-      // Optimistic update
+      let optimisticUpdatedPlan: MachineAnnualPMPlan | undefined;
+
+      // Optimistic update + persist to IndexedDB
       setPmPlans((prev) => {
-        return prev.map((plan) => {
+        const next = prev.map((plan) => {
           if (plan.id === planId) {
             const existing = plan.months[month] || { month, monthLabel: `เดือน ${month}`, isPlanned: true, status: 'completed' };
             const updatedMonth: PMMonthRecord = {
@@ -119,7 +128,7 @@ export function useRealtimePM(initialYear: number = 2026) {
               ...payload,
               month
             };
-            return {
+            optimisticUpdatedPlan = {
               ...plan,
               months: {
                 ...plan.months,
@@ -127,9 +136,14 @@ export function useRealtimePM(initialYear: number = 2026) {
               },
               updatedAt: new Date().toISOString()
             };
+            return optimisticUpdatedPlan;
           }
           return plan;
         });
+
+        const yearToSave = optimisticUpdatedPlan?.year || next[0]?.year || selectedYearRef.current;
+        savePersistentCache(`${CACHE_KEY_PREFIX}${yearToSave}`, next, true);
+        return next;
       });
 
       const apiRes = await safeApiCall<{ success: boolean; plan?: MachineAnnualPMPlan }>(
@@ -145,28 +159,40 @@ export function useRealtimePM(initialYear: number = 2026) {
       );
 
       if (apiRes.ok && apiRes.data?.success && apiRes.data.plan) {
-        setPmPlans((prev) => prev.map((p) => (p.id === apiRes.data!.plan!.id ? apiRes.data!.plan! : p)));
+        const serverPlan = apiRes.data.plan;
+        setPmPlans((prev) => {
+          const next = prev.map((p) => (p.id === serverPlan.id ? serverPlan : p));
+          savePersistentCache(`${CACHE_KEY_PREFIX}${serverPlan.year}`, next, true);
+          return next;
+        });
+        return { success: true, plan: serverPlan };
       }
 
-      const updatedPlan = pmPlans.find((p) => p.id === planId);
-      return { success: true, plan: updatedPlan };
+      return { success: true, plan: optimisticUpdatedPlan || pmPlansRef.current.find((p) => p.id === planId) };
     } catch (err: any) {
       console.error('[KOCH PM] Error recording actual PM:', err);
       return { success: true };
     } finally {
       setIsSaving(false);
     }
-  }, [selectedYear, pmPlans]);
+  }, []);
 
   // Update a full plan or month details
   const updatePlan = useCallback(async (planId: string, updates: Partial<MachineAnnualPMPlan>) => {
     try {
       setIsSaving(true);
+      let optimisticPlan: MachineAnnualPMPlan | undefined;
+
       setPmPlans((prev) => {
-        const next = prev.map((p) => (p.id === planId ? { ...p, ...updates } : p));
-        try {
-          localStorage.setItem(`${CACHE_KEY_PREFIX}${selectedYear}`, JSON.stringify(next));
-        } catch (e) {}
+        const next = prev.map((p) => {
+          if (p.id === planId) {
+            optimisticPlan = { ...p, ...updates, updatedAt: new Date().toISOString() };
+            return optimisticPlan;
+          }
+          return p;
+        });
+        const yearToSave = optimisticPlan?.year || next[0]?.year || selectedYearRef.current;
+        savePersistentCache(`${CACHE_KEY_PREFIX}${yearToSave}`, next, true);
         return next;
       });
 
@@ -180,16 +206,21 @@ export function useRealtimePM(initialYear: number = 2026) {
       );
 
       if (apiRes.ok && apiRes.data?.success && apiRes.data.plan) {
-        setPmPlans((prev) => prev.map((p) => (p.id === planId ? apiRes.data!.plan! : p)));
-        return { success: true, plan: apiRes.data.plan };
+        const serverPlan = apiRes.data.plan;
+        setPmPlans((prev) => {
+          const next = prev.map((p) => (p.id === planId ? serverPlan : p));
+          savePersistentCache(`${CACHE_KEY_PREFIX}${serverPlan.year}`, next, true);
+          return next;
+        });
+        return { success: true, plan: serverPlan };
       }
-      return { success: true };
+      return { success: true, plan: optimisticPlan };
     } catch (err: any) {
       return { success: true };
     } finally {
       setIsSaving(false);
     }
-  }, [selectedYear]);
+  }, []);
 
   // Compute stats across all 33 machines for the year
   const stats: AnnualPMStats = useMemo(() => {

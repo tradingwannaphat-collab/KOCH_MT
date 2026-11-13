@@ -24,6 +24,7 @@ import { MaintenanceTicket, TicketStatus, RootCauseType, SparePartItem } from '.
 import { initialSpareParts } from '../data/initialSpareParts';
 import { getStatusText, getStatusColor, getUrgencyInfo, getRootCauseText } from '../hooks/useRealtimeTickets';
 import { SignaturePad } from './SignaturePad';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface TicketDetailModalProps {
   ticket: MaintenanceTicket;
@@ -273,16 +274,15 @@ export const TicketDetailModal: React.FC<TicketDetailModalProps> = ({
     setSigningRole(null);
   };
 
-  const handleLogPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setLogPhoto(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 1024, 0.72);
+      if (compressed) setLogPhoto(compressed);
+    } catch (err) {
+      console.warn('Failed compressing log photo:', err);
+    }
   };
 
   return (

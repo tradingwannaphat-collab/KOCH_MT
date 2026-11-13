@@ -1,61 +1,85 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SparePartItemMaster, StockTransaction } from '../types/sparePart';
 import { initialSpareParts, initialStockTransactions } from '../data/initialSpareParts';
 import { safeApiCall } from '../utils/apiClient';
+import { savePersistentCache, loadSyncCache, loadAsyncCache } from '../utils/clientStorage';
 
 const CACHE_KEY_PARTS = 'koch_spare_parts_cache_v2';
 const CACHE_KEY_TX = 'koch_stock_tx_cache_v2';
 
 export function useRealtimeSpareParts() {
   const [spareParts, setSpareParts] = useState<SparePartItemMaster[]>(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY_PARTS);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {}
+    const cached = loadSyncCache<SparePartItemMaster[]>(CACHE_KEY_PARTS);
+    if (Array.isArray(cached) && cached.length > 0) return cached;
     return initialSpareParts;
   });
   const [transactions, setTransactions] = useState<StockTransaction[]>(() => {
-    try {
-      const cached = localStorage.getItem(CACHE_KEY_TX);
-      if (cached) return JSON.parse(cached);
-    } catch (e) {}
+    const cached = loadSyncCache<StockTransaction[]>(CACHE_KEY_TX);
+    if (Array.isArray(cached) && cached.length > 0) return cached;
     return initialStockTransactions;
   });
   const [loading, setLoading] = useState(false);
 
+  const hasLocalMutationRef = useRef(false);
+  const hasBackendSyncedRef = useRef(false);
+
+  // Hydrate from IndexedDB on mount
   useEffect(() => {
-    try {
-      if (spareParts && spareParts.length > 0) {
-        localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(spareParts));
+    let active = true;
+    loadAsyncCache<SparePartItemMaster[]>(CACHE_KEY_PARTS).then((stored) => {
+      if (!active) return;
+      if (
+        Array.isArray(stored) &&
+        stored.length > 0 &&
+        !hasLocalMutationRef.current &&
+        !hasBackendSyncedRef.current
+      ) {
+        setSpareParts(stored);
       }
-    } catch (e) {}
+    });
+    loadAsyncCache<StockTransaction[]>(CACHE_KEY_TX).then((stored) => {
+      if (!active) return;
+      if (
+        Array.isArray(stored) &&
+        stored.length > 0 &&
+        !hasLocalMutationRef.current &&
+        !hasBackendSyncedRef.current
+      ) {
+        setTransactions(stored);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (spareParts && spareParts.length > 0) {
+      savePersistentCache(CACHE_KEY_PARTS, spareParts, true);
+    }
   }, [spareParts]);
 
   useEffect(() => {
-    try {
-      if (transactions && transactions.length > 0) {
-        localStorage.setItem(CACHE_KEY_TX, JSON.stringify(transactions));
-      }
-    } catch (e) {}
+    if (transactions && transactions.length > 0) {
+      savePersistentCache(CACHE_KEY_TX, transactions, true);
+    }
   }, [transactions]);
 
   // Fetch initial spare parts
   const fetchSpareParts = useCallback(async () => {
     try {
-      const res = await fetch('/api/spare-parts');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.spareParts) {
-          setSpareParts(data.spareParts);
-          try {
-            localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(data.spareParts));
-          } catch (e) {}
+      const apiRes = await safeApiCall<{ spareParts?: SparePartItemMaster[]; transactions?: StockTransaction[] }>(
+        '/api/spare-parts'
+      );
+      if (apiRes.ok && apiRes.data) {
+        hasBackendSyncedRef.current = true;
+        if (apiRes.data.spareParts) {
+          setSpareParts(apiRes.data.spareParts);
+          savePersistentCache(CACHE_KEY_PARTS, apiRes.data.spareParts, true);
         }
-        if (data.transactions) {
-          setTransactions(data.transactions);
-          try {
-            localStorage.setItem(CACHE_KEY_TX, JSON.stringify(data.transactions));
-          } catch (e) {}
+        if (apiRes.data.transactions) {
+          setTransactions(apiRes.data.transactions);
+          savePersistentCache(CACHE_KEY_TX, apiRes.data.transactions, true);
         }
       }
     } catch (err) {
@@ -122,14 +146,20 @@ export function useRealtimeSpareParts() {
           const data = JSON.parse(event.data);
           if (data.spareParts) {
             setSpareParts(data.spareParts);
+            savePersistentCache(CACHE_KEY_PARTS, data.spareParts, true);
           }
           if (data.stockTransactions) {
             setTransactions(data.stockTransactions);
+            savePersistentCache(CACHE_KEY_TX, data.stockTransactions, true);
           }
         } catch (err) {
           console.error('Error parsing data_reset in spare parts hook', err);
         }
       });
+
+      es.onerror = () => {
+        es?.close();
+      };
     } catch (err) {
       console.warn('SSE not supported or connection failed for spare parts', err);
     }
@@ -142,6 +172,7 @@ export function useRealtimeSpareParts() {
   // Actions
   const createSparePart = async (partData: Partial<SparePartItemMaster>) => {
     try {
+      hasLocalMutationRef.current = true;
       const now = new Date();
       const stock = partData.stockQty ?? 0;
       const min = partData.minStock ?? 1;
@@ -172,9 +203,7 @@ export function useRealtimeSpareParts() {
 
       setSpareParts((prev) => {
         const next = [newPart, ...prev];
-        try {
-          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_PARTS, next, true);
         return next;
       });
 
@@ -193,11 +222,10 @@ export function useRealtimeSpareParts() {
 
   const updateSparePart = async (id: string, updates: Partial<SparePartItemMaster>) => {
     try {
+      hasLocalMutationRef.current = true;
       setSpareParts((prev) => {
         const next = prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p));
-        try {
-          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_PARTS, next, true);
         return next;
       });
 
@@ -208,7 +236,11 @@ export function useRealtimeSpareParts() {
       });
 
       if (apiRes.ok && apiRes.data?.success && apiRes.data.sparePart) {
-        setSpareParts((prev) => prev.map((p) => (p.id === id ? apiRes.data!.sparePart! : p)));
+        setSpareParts((prev) => {
+          const next = prev.map((p) => (p.id === id ? apiRes.data!.sparePart! : p));
+          savePersistentCache(CACHE_KEY_PARTS, next, true);
+          return next;
+        });
         return { success: true, sparePart: apiRes.data.sparePart };
       }
 
@@ -221,11 +253,10 @@ export function useRealtimeSpareParts() {
 
   const deleteSparePart = async (id: string) => {
     try {
+      hasLocalMutationRef.current = true;
       setSpareParts((prev) => {
         const next = prev.filter((p) => p.id !== id);
-        try {
-          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_PARTS, next, true);
         return next;
       });
 
@@ -248,6 +279,7 @@ export function useRealtimeSpareParts() {
     }
   ) => {
     try {
+      hasLocalMutationRef.current = true;
       const part = spareParts.find((p) => p.id === id);
       let newStock = part ? part.stockQty : 0;
       if (payload.type === 'in') newStock += payload.quantity;
@@ -279,17 +311,13 @@ export function useRealtimeSpareParts() {
           if (p.id !== id) return p;
           return { ...p, stockQty: newStock, status: newStatus, updatedAt: now.toISOString() };
         });
-        try {
-          localStorage.setItem(CACHE_KEY_PARTS, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_PARTS, next, true);
         return next;
       });
 
       setTransactions((prev) => {
         const next = [newTx, ...prev];
-        try {
-          localStorage.setItem(CACHE_KEY_TX, JSON.stringify(next));
-        } catch (e) {}
+        savePersistentCache(CACHE_KEY_TX, next, true);
         return next;
       });
 
@@ -304,10 +332,18 @@ export function useRealtimeSpareParts() {
 
       if (apiRes.ok && apiRes.data?.success) {
         if (apiRes.data.sparePart) {
-          setSpareParts((prev) => prev.map((p) => (p.id === id ? apiRes.data!.sparePart! : p)));
+          setSpareParts((prev) => {
+            const next = prev.map((p) => (p.id === id ? apiRes.data!.sparePart! : p));
+            savePersistentCache(CACHE_KEY_PARTS, next, true);
+            return next;
+          });
         }
         if (apiRes.data.transaction) {
-          setTransactions((prev) => [apiRes.data!.transaction!, ...prev.filter((t) => t.id !== newTx.id)]);
+          setTransactions((prev) => {
+            const next = [apiRes.data!.transaction!, ...prev.filter((t) => t.id !== newTx.id)];
+            savePersistentCache(CACHE_KEY_TX, next, true);
+            return next;
+          });
         }
       }
       return { success: true };

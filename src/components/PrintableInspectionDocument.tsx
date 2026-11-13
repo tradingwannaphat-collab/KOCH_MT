@@ -5,6 +5,7 @@ import { KochLogo } from './KochLogo';
 import { Printer, ArrowLeft, Globe, Download, Loader2, Upload, Camera, Check } from 'lucide-react';
 import { Language, translations, SUPPORTED_LANGUAGES, DEFAULT_ITEMS_I18N } from '../i18n/translations';
 import { exportElementToPdf } from '../utils/pdfExport';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface PrintableInspectionDocumentProps {
   sheet: MachineMonthlyCheckSheet;
@@ -33,16 +34,20 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
   const documentRef = useRef<HTMLDivElement>(null);
   const diagramInputRef = useRef<HTMLInputElement>(null);
   const [customDiagram, setCustomDiagram] = useState<string>('');
+  const [diagramError, setDiagramError] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const t = translations[printLang] || translations.th;
 
-  const handleDiagramUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  React.useEffect(() => {
+    setDiagramError(false);
+  }, [sheet.machineId, customDiagram]);
+
+  const handleDiagramUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      if (event.target?.result) {
-        const dataUrl = event.target.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 1024, 0.75);
+      if (dataUrl) {
         setCustomDiagram(dataUrl);
         setUploadSuccess(true);
         setTimeout(() => setUploadSuccess(false), 3000);
@@ -50,8 +55,9 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
           await onUpdateMachine(currentMachine.id, { imageUrl: dataUrl, photoUrl: dataUrl });
         }
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn('Failed compressing inspection diagram:', err);
+    }
     e.target.value = '';
   };
 
@@ -87,7 +93,7 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
 
   const handlePrint = () => {
     const prevTitle = document.title;
-    document.title = `ใบตรวจสอบเครื่องจักร_KOCH_${sheet.machineNo || 'PM'}_${sheet.month}`;
+    document.title = `FM-MN01-04_ใบตรวจสอบเครื่องจักร_${sheet.machineNo || 'PM'}_${sheet.month}`;
     window.print();
     document.title = prevTitle;
   };
@@ -95,8 +101,12 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
   const handleDownloadPdf = async () => {
     if (!documentRef.current) return;
     setIsDownloadingPdf(true);
-    const fileName = `ใบตรวจสอบเครื่องจักร_${sheet.machineNo || 'PM-RECORD'}_${sheet.month}.pdf`;
-    await exportElementToPdf(documentRef.current, fileName);
+    const fileName = `FM-MN01-04_ใบตรวจสอบเครื่องจักร_${sheet.machineNo || 'PM-RECORD'}_${sheet.month}.pdf`;
+    await exportElementToPdf(documentRef.current, fileName, {
+      orientation: 'landscape',
+      fitToOnePage: true,
+      marginMm: 5
+    });
     setIsDownloadingPdf(false);
   };
 
@@ -267,17 +277,17 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
         </div>
       </div>
 
-      {/* Official Sheet Document Container matching Image 2 & 1 exactly */}
+      {/* Official Sheet Document Container matching FM-MN01-04 Standard (1 Page A4 Landscape) */}
       <div 
         ref={documentRef}
         id="printable-inspection-container"
-        className="max-w-[1240px] mx-auto bg-white p-6 sm:p-8 shadow-lg rounded-xl border border-slate-300 print:shadow-none print:border-none print:p-0 print:max-w-none text-slate-900 font-sans"
+        className="max-w-[1160px] mx-auto bg-white p-4 sm:p-5 shadow-lg rounded-xl border border-slate-300 print:shadow-none print:border-none print:p-0 print:max-w-none text-slate-900 font-sans"
       >
         <style>{`
           @media print {
             @page {
               size: A4 landscape;
-              margin: 6mm;
+              margin: 5mm;
             }
             body {
               -webkit-print-color-adjust: exact;
@@ -286,85 +296,112 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
           }
         `}</style>
 
-        {/* Top Header matching KOCH Image 2 */}
-        <div className="border border-slate-900 mb-2">
+        {/* Top Header with Official Document Control Box (FM-MN01-04) */}
+        <div className="border border-slate-900 mb-1.5">
           <div className="grid grid-cols-12 divide-x divide-slate-900">
             {/* Logo box */}
-            <div className="col-span-3 flex items-center justify-center p-3 bg-white">
+            <div className="col-span-3 flex items-center justify-center p-2 bg-white">
               <KochLogo size="md" variant="full" />
             </div>
 
             {/* Document Title Header */}
-            <div className="col-span-9 flex flex-col items-center justify-center p-3 text-center bg-white">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            <div className="col-span-6 flex flex-col items-center justify-center p-2 text-center bg-white">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900">
                 ใบตรวจสอบเครื่องจักร / อุปกรณ์
               </h1>
-              <h2 className="text-sm sm:text-base font-semibold tracking-wider text-slate-800 uppercase mt-0.5 font-mono">
+              <h2 className="text-xs sm:text-sm font-semibold tracking-wider text-slate-800 uppercase mt-0.5 font-mono">
                 PREVENTIVE MAINTENANCE RECORD
               </h2>
+            </div>
+
+            {/* Document Control Number Box */}
+            <div className="col-span-3 p-2 bg-slate-50/70 flex flex-col justify-center text-[10px] font-mono leading-snug">
+              <div className="flex justify-between gap-2 border-b border-slate-300 pb-0.5 mb-0.5">
+                <span className="text-slate-600 font-sans">หมายเลขเอกสาร :</span>
+                <span className="font-bold text-slate-900">FM-MN01-04</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-600 font-sans">แก้ไขครั้งที่ :</span>
+                <span className="font-semibold text-slate-800">Rev.00</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-600 font-sans">วันที่บังคับใช้ :</span>
+                <span className="font-semibold text-slate-800">19/10/2026</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-slate-600 font-sans">หน้าที่ :</span>
+                <span className="font-semibold text-slate-800">1 / 1</span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Machine Visual / Callout Inspection Diagram */}
-        <div className="border border-slate-900 mb-2 p-2 bg-slate-50/50">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+        <div className="border border-slate-900 mb-1.5 p-1.5 bg-slate-50/50">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-3">
             {/* Machine Graphic with Callouts & Click to Upload from PC */}
             <div 
               onClick={() => diagramInputRef.current?.click()}
-              className="group relative max-w-[500px] w-full flex items-center justify-center bg-white border border-slate-200 rounded-lg p-2 overflow-hidden shadow-2xs cursor-pointer"
+              className="group relative max-w-[400px] w-full flex items-center justify-center bg-white border border-slate-200 rounded-lg p-1.5 overflow-hidden shadow-2xs cursor-pointer"
               title="คลิกเพื่อเลือกไฟล์รูปภาพจากคอมพิวเตอร์เพื่อเปลี่ยนรูปในแบบฟอร์ม"
             >
-              <img
-                src={customDiagram || currentMachine?.imageUrl || currentMachine?.photoUrl || (isSlotMachine 
-                  ? 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=80'
-                  : 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=800&auto=format&fit=crop&q=80')}
-                alt={currentMachine?.name || 'Machine Visual'}
-                className="w-full h-36 object-contain rounded group-hover:opacity-90 transition"
-              />
+              {!diagramError ? (
+                <img
+                  src={customDiagram || currentMachine?.imageUrl || currentMachine?.photoUrl || (isSlotMachine 
+                    ? 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=80'
+                    : 'https://images.unsplash.com/photo-1504917599217-d4dc5ebe6122?w=800&auto=format&fit=crop&q=80')}
+                  alt={currentMachine?.name || 'Machine Visual'}
+                  onError={() => setDiagramError(true)}
+                  className="w-full h-24 object-contain rounded group-hover:opacity-90 transition"
+                />
+              ) : (
+                <div className="w-full h-24 rounded bg-slate-100 border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-600 px-4">
+                  <div className="text-xs font-bold font-mono text-blue-900">
+                    {currentMachine?.tagCode || sheet.machineNo} • {currentMachine?.name || sheet.machineName}
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    รหัสเครื่องจักร: {currentMachine?.code || sheet.machineNo} (จุดตรวจเช็ค 1 - {Math.min(items.length, 8)})
+                  </div>
+                </div>
+              )}
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition print:hidden">
                 <span className="bg-white/95 text-slate-800 text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-xs flex items-center gap-1">
                   <Camera className="w-3.5 h-3.5 text-blue-600" />
                   เปลี่ยนรูปจากคอมฯ
                 </span>
               </div>
-              {/* Callout Pins 1 to 7 mimicking user Image 2 */}
-              <div className="absolute left-6 top-8 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              {/* Callout Pins 1 to 7 mimicking KOCH standard */}
+              <div className="absolute left-6 top-6 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 1
               </div>
-              <div className="absolute left-28 top-3 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="absolute left-24 top-2 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 2
               </div>
-              <div className="absolute left-48 top-3 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="absolute left-44 top-2 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 7
               </div>
-              <div className="absolute right-36 top-3 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="absolute right-28 top-2 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 3
               </div>
-              <div className="absolute left-44 bottom-5 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="absolute left-40 bottom-3 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 4
               </div>
-              <div className="absolute left-2 bottom-8 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="absolute left-2 bottom-6 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 5
               </div>
-              <div className="absolute left-2 top-3 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-sm">
+              <div className="absolute left-2 top-2 bg-blue-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold shadow-sm">
                 6
               </div>
             </div>
 
             {/* Quick Points Legend */}
-            <div className="flex-1 text-[11px] text-slate-700 grid grid-cols-2 gap-x-4 gap-y-1">
+            <div className="flex-1 text-[10px] text-slate-700 grid grid-cols-2 gap-x-3 gap-y-0.5">
               {items.slice(0, 8).map((it) => (
                 <div key={it.no} className="flex items-center gap-1.5">
-                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+                  <span className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[8.5px] font-bold flex-shrink-0">
                     {it.no}
                   </span>
                   <span className="font-medium truncate">{it.description}</span>
-                  {it.criteria && (
-                    <span className="text-[10px] text-slate-500 truncate hidden lg:inline">
-                      ({it.criteria})
-                    </span>
-                  )}
                 </div>
               ))}
             </div>
@@ -372,7 +409,7 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
         </div>
 
         {/* Machine Type and Machine Code Header Bar */}
-        <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-slate-900 border-x border-t border-slate-900 px-3 py-1.5 bg-slate-100/60">
+        <div className="flex items-center justify-between text-xs font-bold text-slate-900 border-x border-t border-slate-900 px-2.5 py-1 bg-slate-100/60">
           <div>
             ประเภทเครื่องจักร : <span className="font-semibold">{currentMachine?.processName || currentMachine?.name || 'SLOT'}</span>
           </div>
@@ -383,36 +420,36 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
 
         {/* Matrix Table with Columns: No. | หัวข้อตรวจสอบ | เกณฑ์มาตรฐานการตรวจสอบ | ความถี่ | วันที่ 1..31 | เลขที่ใบแจ้งซ่อม */}
         <div className="border border-slate-900 overflow-x-auto">
-          <table className="w-full text-[10px] sm:text-[11px] border-collapse min-w-[1000px]">
+          <table className="w-full text-[9.5px] border-collapse">
             <thead>
               {/* Row 1 of Table Header */}
               <tr className="border-b border-slate-900 bg-slate-50">
-                <th rowSpan={2} className="border-r border-slate-900 p-1 text-center w-7 font-bold">
+                <th rowSpan={2} className="border-r border-slate-900 p-0.5 text-center w-6 font-bold">
                   No.
                 </th>
-                <th rowSpan={2} className="border-r border-slate-900 p-1.5 text-center min-w-[150px] font-bold">
+                <th rowSpan={2} className="border-r border-slate-900 p-1 text-center min-w-[125px] font-bold">
                   {t.colDescription}
                 </th>
-                <th rowSpan={2} className="border-r border-slate-900 p-1.5 text-center min-w-[160px] font-bold">
+                <th rowSpan={2} className="border-r border-slate-900 p-1 text-center min-w-[130px] font-bold">
                   {t.colCriteria}
                 </th>
-                <th rowSpan={2} className="border-r border-slate-900 p-0.5 text-center w-9 font-bold leading-tight">
+                <th rowSpan={2} className="border-r border-slate-900 p-0.5 text-center w-7 font-bold leading-tight text-[8.5px]">
                   <div>ความ</div>
                   <div>ถี่</div>
                 </th>
-                <th colSpan={31} className="border-b border-slate-900 p-1 text-center font-bold">
+                <th colSpan={31} className="border-b border-slate-900 p-0.5 text-center font-bold">
                   เดือน <span className="underline font-semibold px-2">{printMode === 'blank' ? '...........................' : monthLabel}</span> 
                   ปี <span className="underline font-semibold px-2">{printMode === 'blank' ? '........................' : `${thaiYear} (${yearStr})`}</span>
                 </th>
-                <th rowSpan={2} className="border-l border-slate-900 p-1 text-center min-w-[95px] font-bold">
+                <th rowSpan={2} className="border-l border-slate-900 p-0.5 text-center w-[72px] font-bold leading-tight text-[8.5px]">
                   {t.colTicketNo}
                 </th>
               </tr>
 
               {/* Row 2: Days 1 to 31 */}
-              <tr className="border-b border-slate-900 text-[9px] font-bold bg-slate-50/80">
+              <tr className="border-b border-slate-900 text-[8.5px] font-bold bg-slate-50/80">
                 {daysArray.map((d) => (
-                  <th key={d} className="border-r border-slate-400 p-0.5 text-center w-[22px] last:border-r-0">
+                  <th key={d} className="border-r border-slate-400 p-0 text-center w-[19px] last:border-r-0">
                     {d}
                   </th>
                 ))}
@@ -421,16 +458,16 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
             <tbody>
               {items.map((it) => (
                 <tr key={it.no} className="border-b border-slate-400 hover:bg-slate-50/40">
-                  <td className="border-r border-slate-900 p-1 text-center font-bold">
+                  <td className="border-r border-slate-900 py-0.5 px-1 text-center font-bold">
                     {it.no}
                   </td>
-                  <td className="border-r border-slate-900 p-1.5 text-left text-[10.5px] leading-tight font-medium">
+                  <td className="border-r border-slate-900 py-0.5 px-1.5 text-left text-[9.5px] leading-tight font-medium">
                     {getItemDescription(it.no, it.description)}
                   </td>
-                  <td className="border-r border-slate-900 p-1.5 text-left text-[10px] text-slate-700 leading-tight">
+                  <td className="border-r border-slate-900 py-0.5 px-1.5 text-left text-[9px] text-slate-700 leading-tight">
                     {it.criteria || '-'}
                   </td>
-                  <td className="border-r border-slate-900 p-0.5 text-center font-bold text-slate-800">
+                  <td className="border-r border-slate-900 py-0.5 px-0.5 text-center font-bold text-slate-800">
                     {it.frequency || 'D'}
                   </td>
 
@@ -438,7 +475,7 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
                   {daysArray.map((d) => {
                     const status = printMode === 'filled' ? days[d]?.results?.[it.no] : null;
                     return (
-                      <td key={d} className="border-r border-slate-300 p-0 text-center text-[11px] last:border-r-0 font-medium">
+                      <td key={d} className="border-r border-slate-300 p-0 text-center text-[10px] last:border-r-0 font-medium">
                         {status === 'pass' && <span className="text-slate-900 font-bold">/</span>}
                         {status === 'abnormal' && <span className="text-rose-600 font-bold">x</span>}
                         {status === 'off' && <span className="text-slate-500 font-bold">■</span>}
@@ -447,7 +484,7 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
                   })}
 
                   {/* เลขที่ใบแจ้งซ่อม Column */}
-                  <td className="border-l border-slate-900 p-1 text-center text-[9px] font-mono font-semibold text-rose-600 truncate">
+                  <td className="border-l border-slate-900 py-0.5 px-1 text-center text-[8.5px] font-mono font-semibold text-rose-600 truncate">
                     {printMode === 'filled' ? (it.repairTicketNo || '') : ''}
                   </td>
                 </tr>
@@ -455,13 +492,13 @@ export const PrintableInspectionDocument: React.FC<PrintableInspectionDocumentPr
 
               {/* Table Bottom Row: ผู้ตรวจสอบ (Signatures / initials per day) */}
               <tr className="border-b border-slate-900 bg-slate-50/60">
-                <td colSpan={4} className="border-r border-slate-900 p-1.5 text-center font-bold text-xs">
+                <td colSpan={4} className="border-r border-slate-900 p-1 text-center font-bold text-[10px]">
                   ผู้ตรวจสอบ
                 </td>
                 {daysArray.map((d) => {
                   const inspector = printMode === 'filled' ? days[d]?.inspectorName : '';
                   return (
-                    <td key={d} className="border-r border-slate-300 p-0 text-center text-[8px] truncate max-w-[22px] last:border-r-0 font-medium text-slate-700">
+                    <td key={d} className="border-r border-slate-300 p-0 text-center text-[7px] truncate max-w-[19px] last:border-r-0 font-medium text-slate-700">
                       {inspector ? (inspector === '-' ? '-' : inspector.split(' ')[0]) : ''}
                     </td>
                   );

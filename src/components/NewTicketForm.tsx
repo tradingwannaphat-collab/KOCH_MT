@@ -28,6 +28,7 @@ import {
 import { MaintenanceTicket, UrgencyLevel, MachineAsset } from '../types/ticket';
 import { SignaturePad } from './SignaturePad';
 import { safeApiCall } from '../utils/apiClient';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface NewTicketFormProps {
   onSubmit: (ticketData: Partial<MaintenanceTicket>) => Promise<{ success: boolean; ticket?: MaintenanceTicket; message?: string }>;
@@ -122,56 +123,52 @@ export const NewTicketForm: React.FC<NewTicketFormProps> = ({
     setIsScanningTag(true);
     setScanMessage('กำลังอ่านรูปภาพและตรวจจับหมายเลขเครื่องจักร...');
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
+    try {
+      const base64 = await compressImageFile(file, 1024, 0.72);
       if (!base64) {
         setIsScanningTag(false);
         return;
       }
 
-      // Also add to ticket photos so technician can see the machine tag photo
+      // Also add compressed photo to ticket photos so technician can see the machine tag photo
       setPhotos((prev) => [...prev, base64]);
 
-      try {
-        const apiRes = await safeApiCall<{
-          success: boolean;
-          matchedMachine?: MachineAsset;
-          aiResult?: { detectedText?: string };
-        }>('/api/ai/scan-machine-tag', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64 })
-        });
+      const apiRes = await safeApiCall<{
+        success: boolean;
+        matchedMachine?: MachineAsset;
+        aiResult?: { detectedText?: string };
+      }>('/api/ai/scan-machine-tag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64 })
+      });
 
-        const data = apiRes.data;
-        if (apiRes.ok && data?.success && data.matchedMachine) {
-          handleSelectMachineAsset(data.matchedMachine);
-          setScanMessage(`✓ ตรวจพบเครื่อง: ${data.matchedMachine.tagCode || ''} - ${data.matchedMachine.name} (${data.matchedMachine.code})`);
-        } else if (data?.aiResult?.detectedText) {
-          const detected = String(data.aiResult.detectedText).toLowerCase();
-          const localMatch = machines.find((m) => 
-            (m.tagCode && detected.includes(m.tagCode.toLowerCase())) ||
-            detected.includes(m.code.toLowerCase()) ||
-            detected.includes(m.name.toLowerCase()) ||
-            (m.model && detected.includes(m.model.toLowerCase()))
-          );
-          if (localMatch) {
-            handleSelectMachineAsset(localMatch);
-            setScanMessage(`✓ ตรวจพบเครื่อง: ${localMatch.tagCode} - ${localMatch.name} (${localMatch.code})`);
-          } else {
-            setScanMessage(`อ่านข้อความได้: "${data.aiResult.detectedText}" กรุณายืนยันเครื่องในช่อง Drop Down`);
-          }
+      const data = apiRes.data;
+      if (apiRes.ok && data?.success && data.matchedMachine) {
+        handleSelectMachineAsset(data.matchedMachine);
+        setScanMessage(`✓ ตรวจพบเครื่อง: ${data.matchedMachine.tagCode || ''} - ${data.matchedMachine.name} (${data.matchedMachine.code})`);
+      } else if (data?.aiResult?.detectedText) {
+        const detected = String(data.aiResult.detectedText).toLowerCase();
+        const localMatch = machines.find((m) =>
+          (m.tagCode && detected.includes(m.tagCode.toLowerCase())) ||
+          detected.includes(m.code.toLowerCase()) ||
+          detected.includes(m.name.toLowerCase()) ||
+          (m.model && detected.includes(m.model.toLowerCase()))
+        );
+        if (localMatch) {
+          handleSelectMachineAsset(localMatch);
+          setScanMessage(`✓ ตรวจพบเครื่อง: ${localMatch.tagCode} - ${localMatch.name} (${localMatch.code})`);
         } else {
-          setScanMessage('แนบรูปป้ายเครื่องเรียบร้อย กรุณาเลือกเครื่องจักรจาก Drop Down ด้านล่าง');
+          setScanMessage(`อ่านข้อความได้: "${data.aiResult.detectedText}" กรุณายืนยันเครื่องในช่อง Drop Down`);
         }
-      } catch (err) {
+      } else {
         setScanMessage('แนบรูปป้ายเครื่องเรียบร้อย กรุณาเลือกเครื่องจักรจาก Drop Down ด้านล่าง');
-      } finally {
-        setIsScanningTag(false);
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      setScanMessage('แนบรูปป้ายเครื่องเรียบร้อย กรุณาเลือกเครื่องจักรจาก Drop Down ด้านล่าง');
+    } finally {
+      setIsScanningTag(false);
+    }
   };
 
   const handleSelectMachineAsset = (mach: MachineAsset) => {
@@ -210,19 +207,17 @@ export const NewTicketForm: React.FC<NewTicketFormProps> = ({
   const pcPhotoInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingPhotos, setIsDraggingPhotos] = useState(false);
 
-  const addFilesAsPhotos = (fileList: FileList | File[]) => {
+  const addFilesAsPhotos = async (fileList: FileList | File[]) => {
     const files = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
     if (files.length === 0) return;
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setPhotos((prev) => [...prev, event.target!.result as string]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const compressedPhotos = await Promise.all(
+      files.map((file) => compressImageFile(file, 1024, 0.72).catch(() => ''))
+    );
+    const validPhotos = compressedPhotos.filter(Boolean);
+    if (validPhotos.length > 0) {
+      setPhotos((prev) => [...prev, ...validPhotos]);
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

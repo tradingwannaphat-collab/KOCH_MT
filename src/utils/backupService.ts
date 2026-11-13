@@ -3,7 +3,8 @@ import { initialTickets } from '../data/initialTickets';
 import { generateInitialCheckSheets } from '../data/initialInspections';
 import { initialBOMItems } from '../data/initialBOM';
 import { initialSpareParts, initialStockTransactions } from '../data/initialSpareParts';
-import { generateInitialAnnualPMPlans, initialAnnualPMPlans } from '../data/initialPMPlans';
+import { generateInitialAnnualPMPlans } from '../data/initialPMPlans';
+import { loadAsyncCache, savePersistentCache } from './clientStorage';
 
 export const CACHE_KEYS = {
   TICKETS: 'koch_tickets_cache_v2',
@@ -16,23 +17,20 @@ export const CACHE_KEYS = {
   PM_2027: 'koch_pm_plans_2027'
 };
 
-function safeGetFromStorage<T>(key: string, fallback: T): T {
+async function safeGetFromPersistentStorage<T>(key: string, fallback: T): Promise<T> {
   try {
-    const raw = localStorage.getItem(key);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed as unknown as T;
-      if (parsed && typeof parsed === 'object') return parsed as unknown as T;
-    }
+    const stored = await loadAsyncCache<T>(key);
+    if (Array.isArray(stored) && stored.length > 0) return stored as unknown as T;
+    if (stored && typeof stored === 'object') return stored as unknown as T;
   } catch (e) {
-    console.warn(`[KOCH Backup] Failed reading ${key} from localStorage`, e);
+    console.warn(`[KOCH Backup] Failed reading ${key} from clientStorage`, e);
   }
   return fallback;
 }
 
 /**
  * Download a complete JSON backup of the factory database.
- * Works seamlessly with backend if available, or directly from client storage/defaults on static hosts like Vercel.
+ * Works seamlessly with backend if available, or directly from IndexedDB/localStorage/defaults on static hosts like Vercel.
  */
 export async function downloadFullSystemBackup(): Promise<{ success: boolean; filename: string }> {
   let backupData: any = null;
@@ -55,19 +53,21 @@ export async function downloadFullSystemBackup(): Promise<{ success: boolean; fi
     // Backend API not reachable or static host (Vercel)
   }
 
-  // 2. If backend didn't supply data, construct from localStorage + master initial dataset
+  // 2. If backend didn't supply data, construct from IndexedDB + localStorage + master initial dataset
   if (!backupData) {
-    const tickets = safeGetFromStorage(CACHE_KEYS.TICKETS, initialTickets);
-    const machines = safeGetFromStorage(CACHE_KEYS.MACHINES, initialMachines);
-    const inspections = safeGetFromStorage(CACHE_KEYS.INSPECTIONS, generateInitialCheckSheets());
-    const bomItems = safeGetFromStorage(CACHE_KEYS.BOM, initialBOMItems);
-    const spareParts = safeGetFromStorage(CACHE_KEYS.SPARE_PARTS, initialSpareParts);
-    const stockTransactions = safeGetFromStorage(CACHE_KEYS.STOCK_TX, initialStockTransactions);
+    const [tickets, machines, inspections, bomItems, spareParts, stockTransactions, pm2026, pm2027] =
+      await Promise.all([
+        safeGetFromPersistentStorage(CACHE_KEYS.TICKETS, initialTickets),
+        safeGetFromPersistentStorage(CACHE_KEYS.MACHINES, initialMachines),
+        safeGetFromPersistentStorage(CACHE_KEYS.INSPECTIONS, generateInitialCheckSheets()),
+        safeGetFromPersistentStorage(CACHE_KEYS.BOM, initialBOMItems),
+        safeGetFromPersistentStorage(CACHE_KEYS.SPARE_PARTS, initialSpareParts),
+        safeGetFromPersistentStorage(CACHE_KEYS.STOCK_TX, initialStockTransactions),
+        safeGetFromPersistentStorage(CACHE_KEYS.PM_2026, generateInitialAnnualPMPlans(2026)),
+        safeGetFromPersistentStorage(CACHE_KEYS.PM_2027, generateInitialAnnualPMPlans(2027))
+      ]);
 
-    // Merge PM plans for 2026 (2569) and 2027 (2570)
-    const pm2026 = safeGetFromStorage(CACHE_KEYS.PM_2026, generateInitialAnnualPMPlans(2026));
-    const pm2027 = safeGetFromStorage(CACHE_KEYS.PM_2027, generateInitialAnnualPMPlans(2027));
-    const pmPlans = [...pm2026, ...pm2027];
+    const pmPlans = [...pm2026, ...pm27Safe(pm2027)];
 
     backupData = {
       success: true,
@@ -101,9 +101,13 @@ export async function downloadFullSystemBackup(): Promise<{ success: boolean; fi
   return { success: true, filename };
 }
 
+function pm27Safe<T>(list: T[]): T[] {
+  return Array.isArray(list) ? list : [];
+}
+
 /**
  * Restore complete factory database from JSON backup file.
- * Restores to localStorage immediately and syncs with backend if reachable.
+ * Restores to IndexedDB + localStorage immediately (awaiting completion before caller reloads) and syncs with backend if reachable.
  */
 export async function restoreFullSystemBackup(jsonText: string): Promise<{ success: boolean; message?: string }> {
   let parsed: any;
@@ -117,34 +121,36 @@ export async function restoreFullSystemBackup(jsonText: string): Promise<{ succe
     return { success: false, message: 'ข้อมูลในไฟล์ว่างเปล่าหรือไม่ถูกต้อง' };
   }
 
-  // 1. Immediately store into browser localStorage
+  // 1. Store into IndexedDB + localStorage and wait for all IndexedDB writes to commit
   try {
+    const tasks: Promise<void>[] = [];
     if (Array.isArray(parsed.tickets) && parsed.tickets.length > 0) {
-      localStorage.setItem(CACHE_KEYS.TICKETS, JSON.stringify(parsed.tickets));
+      tasks.push(savePersistentCache(CACHE_KEYS.TICKETS, parsed.tickets, true));
     }
     if (Array.isArray(parsed.machines) && parsed.machines.length > 0) {
-      localStorage.setItem(CACHE_KEYS.MACHINES, JSON.stringify(parsed.machines));
+      tasks.push(savePersistentCache(CACHE_KEYS.MACHINES, parsed.machines, true));
     }
     if (Array.isArray(parsed.inspections) && parsed.inspections.length > 0) {
-      localStorage.setItem(CACHE_KEYS.INSPECTIONS, JSON.stringify(parsed.inspections));
+      tasks.push(savePersistentCache(CACHE_KEYS.INSPECTIONS, parsed.inspections, true));
     }
     if (Array.isArray(parsed.bomItems) && parsed.bomItems.length > 0) {
-      localStorage.setItem(CACHE_KEYS.BOM, JSON.stringify(parsed.bomItems));
+      tasks.push(savePersistentCache(CACHE_KEYS.BOM, parsed.bomItems, true));
     }
     if (Array.isArray(parsed.spareParts) && parsed.spareParts.length > 0) {
-      localStorage.setItem(CACHE_KEYS.SPARE_PARTS, JSON.stringify(parsed.spareParts));
+      tasks.push(savePersistentCache(CACHE_KEYS.SPARE_PARTS, parsed.spareParts, true));
     }
     if (Array.isArray(parsed.stockTransactions) && parsed.stockTransactions.length > 0) {
-      localStorage.setItem(CACHE_KEYS.STOCK_TX, JSON.stringify(parsed.stockTransactions));
+      tasks.push(savePersistentCache(CACHE_KEYS.STOCK_TX, parsed.stockTransactions, true));
     }
     if (Array.isArray(parsed.pmPlans) && parsed.pmPlans.length > 0) {
       const p26 = parsed.pmPlans.filter((p: any) => p.year === 2026);
       const p27 = parsed.pmPlans.filter((p: any) => p.year === 2027);
-      if (p26.length > 0) localStorage.setItem(CACHE_KEYS.PM_2026, JSON.stringify(p26));
-      if (p27.length > 0) localStorage.setItem(CACHE_KEYS.PM_2027, JSON.stringify(p27));
+      if (p26.length > 0) tasks.push(savePersistentCache(CACHE_KEYS.PM_2026, p26, true));
+      if (p27.length > 0) tasks.push(savePersistentCache(CACHE_KEYS.PM_2027, p27, true));
     }
+    await Promise.all(tasks);
   } catch (e) {
-    console.error('[KOCH Backup] Error writing to localStorage', e);
+    console.error('[KOCH Backup] Error writing to persistent storage', e);
   }
 
   // 2. Try syncing with backend API if available

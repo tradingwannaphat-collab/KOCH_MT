@@ -17,7 +17,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   machineCount = 0
 }) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1.5 px-2 lg:hidden shadow-lg safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 py-1.5 px-2 lg:hidden shadow-lg safe-bottom print:hidden no-print">
       <div className="flex items-center justify-around max-w-lg mx-auto">
         {/* Tab 1: Daily Inspection (FM-MN01-04) */}
         <button

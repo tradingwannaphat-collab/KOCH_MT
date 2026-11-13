@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { MachineBOMItem, BOMChangeLog, ReplacementReason } from '../types/bom';
 import { MachineAsset } from '../types/ticket';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface MachineBOMManagerProps {
   bomItems: MachineBOMItem[];
@@ -234,16 +235,15 @@ export const MachineBOMManager: React.FC<MachineBOMManagerProps> = ({
     setNewNotes('');
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setReplacePhoto(event.target.result as string);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImageFile(file, 800, 0.75);
+      if (compressed) setReplacePhoto(compressed);
+    } catch (err) {
+      console.warn('Failed compressing BOM photo:', err);
+    }
   };
 
   return (
