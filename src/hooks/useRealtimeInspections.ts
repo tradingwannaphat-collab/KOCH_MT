@@ -48,7 +48,16 @@ function mergeSheetsById(
     map.set(s.id, s);
   }
   for (const s of incoming) {
-    map.set(s.id, s);
+    const existing = map.get(s.id);
+    if (!existing) {
+      map.set(s.id, s);
+    } else {
+      const existingTime = existing.updatedAt ? Date.parse(existing.updatedAt) : 0;
+      const incomingTime = s.updatedAt ? Date.parse(s.updatedAt) : 0;
+      if (incomingTime >= existingTime) {
+        map.set(s.id, s);
+      }
+    }
   }
   return Array.from(map.values());
 }
@@ -80,6 +89,7 @@ export function useRealtimeInspections() {
   const [saving, setSaving] = useState(false);
   const hasLocalMutationRef = useRef(false);
   const hasBackendSyncedRef = useRef(false);
+  const lastLocalMutationAtRef = useRef<number>(0);
 
   const setSelectedMachineId = useCallback((id: string) => {
     setSelectedMachineIdState(id);
@@ -158,10 +168,17 @@ export function useRealtimeInspections() {
 
       es.addEventListener('inspection_updated', (event: MessageEvent) => {
         try {
+          // Ignore stale SSE echoes immediately after a rapid local click
+          if (Date.now() - lastLocalMutationAtRef.current < 1500) {
+            return;
+          }
           const updatedSheet: MachineMonthlyCheckSheet = JSON.parse(event.data);
           setSheets((prev) => {
             const index = prev.findIndex((s) => s.id === updatedSheet.id);
             if (index >= 0) {
+              const existingTime = prev[index].updatedAt ? Date.parse(prev[index].updatedAt!) : 0;
+              const incomingTime = updatedSheet.updatedAt ? Date.parse(updatedSheet.updatedAt) : 0;
+              if (incomingTime < existingTime) return prev;
               const next = [...prev];
               next[index] = updatedSheet;
               return next;
@@ -241,6 +258,7 @@ export function useRealtimeInspections() {
     try {
       setSaving(true);
       hasLocalMutationRef.current = true;
+      lastLocalMutationAtRef.current = Date.now();
 
       // 1. Optimistically update (or auto-create then update) local sheets state
       setSheets((prev) => {
@@ -305,6 +323,7 @@ export function useRealtimeInspections() {
     currentStatus: InspectionResult
   ) => {
     hasLocalMutationRef.current = true;
+    lastLocalMutationAtRef.current = Date.now();
 
     // Cycle: null -> 'pass' -> 'abnormal' -> 'off' -> null
     let nextStatus: InspectionResult = 'pass';
@@ -368,6 +387,7 @@ export function useRealtimeInspections() {
   ) => {
     try {
       hasLocalMutationRef.current = true;
+      lastLocalMutationAtRef.current = Date.now();
       setSheets((prev) => {
         const exists = prev.some((s) => s.id === sheetId);
         const workingList = exists
@@ -399,6 +419,7 @@ export function useRealtimeInspections() {
     try {
       setSaving(true);
       hasLocalMutationRef.current = true;
+      lastLocalMutationAtRef.current = Date.now();
 
       setSheets((prev) => {
         const exists = prev.some((s) => s.machineId === machineId && s.month === month);

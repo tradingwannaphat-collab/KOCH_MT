@@ -516,9 +516,11 @@ async function startServer() {
         inspections.push(sheet);
       }
 
+      const existingTicketNos = sheet.days[day]?.ticketNos || {};
       sheet.days[day] = {
         day: Number(day),
         results,
+        ticketNos: existingTicketNos,
         inspectorName: inspectorName.trim(),
         supervisorName: supervisorName.trim(),
         notes: notes.trim(),
@@ -550,10 +552,14 @@ async function startServer() {
         sheet.days[day] = {
           day: Number(day),
           results: {},
+          ticketNos: {},
           inspectorName: '',
           supervisorName: '',
           notes: ''
         };
+      }
+      if (!sheet.days[day].results) {
+        sheet.days[day].results = {};
       }
 
       sheet.days[day].results[Number(itemNo)] = status;

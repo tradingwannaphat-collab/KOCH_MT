@@ -288,14 +288,15 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
     });
   }, [pmPlans, searchQuery, selectedCategory, selectedStatusFilter]);
 
-  // Export PDF
+  // Export PDF (1 Page A4 Landscape)
   const handleExportPdf = async () => {
     if (!printSheetRef.current) return;
     try {
       setIsExportingPdf(true);
       await exportElementToPdf(
         printSheetRef.current,
-        `KOCH_Annual_PM_Plan_${selectedYear}_FM_MN01_02.pdf`
+        `KOCH_Annual_PM_Plan_${selectedYear}_FM_MN01_02.pdf`,
+        { orientation: 'landscape', fitToOnePage: true, marginMm: 5 }
       );
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร PDF');
@@ -360,7 +361,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
     <div className="max-w-7xl mx-auto p-3 sm:p-6 pb-28 space-y-6">
       
       {/* Top Banner: Master Annual PM Schedule (FM-MN01-02) */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-indigo-500/20 relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-indigo-500/20 relative overflow-hidden print:hidden no-print">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-5">
@@ -488,7 +489,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
       </div>
 
       {/* Sub-Navigation & View Mode Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-2 print:hidden no-print">
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl text-xs sm:text-sm font-semibold">
           <button
             type="button"
@@ -856,55 +857,63 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
         </div>
       )}
 
-      {/* VIEW 3: PRINTABLE A4 LANDSCAPE MASTER PM SCHEDULE (FM-MN01-02) */}
-      {activeViewMode === 'printable' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-            <div>
-              <h3 className="font-bold text-sm text-slate-900">ตัวอย่างเอกสารก่อนพิมพ์ A4 แนวนอน (Print Preview)</h3>
-              <p className="text-xs text-slate-500">เอกสารควบคุมแผนการบำรุงรักษาเครื่องจักรประจำปี FM-MN01-02 Rev.00</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportPdf}
-                disabled={isExportingPdf}
-                className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-              >
-                {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                <span>บันทึกเป็น PDF</span>
-              </button>
-            </div>
+      {/* VIEW 3: PRINTABLE A4 LANDSCAPE MASTER PM SCHEDULE (FM-MN01-02) — Always mounted for 1-click PDF from any tab */}
+      <div className={activeViewMode === 'printable' ? 'space-y-4 print:space-y-0' : 'hidden'}>
+        <style>{`@media print { @page { size: A4 landscape; margin: 5mm; } }`}</style>
+        <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs print:hidden no-print">
+          <div>
+            <h3 className="font-bold text-sm text-slate-900">ตัวอย่างเอกสารก่อนพิมพ์ A4 แนวนอน (Print Preview - 1 หน้า)</h3>
+            <p className="text-xs text-slate-500">หมายเลขเอกสาร: FM-MN01-02 Rev.00 • จัดพอดีกระดาษ A4 แนวนอนอัตโนมัติ</p>
           </div>
 
-          {/* Printable Layout Container */}
-          <div className="bg-slate-100 p-4 sm:p-6 rounded-3xl overflow-x-auto flex justify-center">
-            <div 
-              ref={printSheetRef}
-              className="bg-white text-slate-900 p-8 shadow-2xl rounded-sm w-[297mm] min-h-[210mm] text-[10px] space-y-3 font-sans print:p-0 print:shadow-none"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
             >
-              {/* Document Header */}
-              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="p-1 border border-slate-300 rounded">
-                    <KochLogo size="sm" variant="horizontal" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-sm leading-tight">บริษัท เค.โอ.ซี.เอช. แพคเกจจิ้ง จำกัด (KOCH PACKAGING CO., LTD.)</div>
-                    <div className="text-[11px] font-bold text-blue-900">
-                      แผนการบำรุงรักษาเครื่องจักรและอุปกรณ์ประจำปี (ANNUAL PREVENTIVE MAINTENANCE SCHEDULE)
-                    </div>
-                    <div className="text-[9.5px] text-slate-500">โรงงานบางแสน BS • ประจำปี พ.ศ. {selectedYear + 543} (ค.ศ. {selectedYear})</div>
-                  </div>
-                </div>
+              {isExportingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              <span>{isExportingPdf ? 'กำลังสร้าง PDF...' : 'บันทึกเป็น PDF (1 หน้า)'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              <span>พิมพ์เอกสาร</span>
+            </button>
+          </div>
+        </div>
 
-                <div className="text-right text-[9.5px] font-mono border border-slate-300 p-2 rounded bg-slate-50">
-                  <div className="font-bold text-slate-900">แบบฟอร์ม: FM-MN01-02</div>
-                  <div>แก้ไขครั้งที่: Rev.00</div>
-                  <div>วันที่มีผลบังคับใช้: 19/10/2026</div>
+        {/* Printable Layout Container */}
+        <div className="bg-slate-100 p-4 sm:p-6 rounded-3xl overflow-x-auto flex justify-center print:bg-white print:p-0 print:overflow-visible">
+          <div 
+            ref={printSheetRef}
+            className="bg-white text-slate-900 p-6 shadow-2xl rounded-sm w-[297mm] text-[9.5px] space-y-2.5 font-sans print:p-0 print:shadow-none print:w-full"
+          >
+            {/* Document Header */}
+            <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2.5">
+              <div className="flex items-center gap-3">
+                <div className="p-1 border border-slate-300 rounded">
+                  <KochLogo size="sm" variant="horizontal" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm leading-tight">บริษัท เค.โอ.ซี.เอช. แพคเกจจิ้ง จำกัด (KOCH PACKAGING CO., LTD.)</div>
+                  <div className="text-[11px] font-bold text-blue-900">
+                    แผนการบำรุงรักษาเครื่องจักรและอุปกรณ์ประจำปี (ANNUAL PREVENTIVE MAINTENANCE SCHEDULE)
+                  </div>
+                  <div className="text-[9.5px] text-slate-500">โรงงานบางแสน BS • ประจำปี พ.ศ. {selectedYear + 543} (ค.ศ. {selectedYear})</div>
                 </div>
               </div>
+
+              <div className="text-right text-[9.5px] font-mono border border-slate-800 px-3 py-1.5 rounded bg-slate-50 shrink-0 space-y-0.5">
+                <div className="font-bold text-slate-900 text-[10.5px]">หมายเลขเอกสาร: FM-MN01-02</div>
+                <div>แก้ไขครั้งที่: Rev.00 • บังคับใช้: 19/10/2026</div>
+                <div className="text-slate-600">หน้าที่: 1 / 1</div>
+              </div>
+            </div>
 
               {/* Table of 33 machines */}
               <table className="w-full border-collapse border border-slate-400 text-[9.5px]">
@@ -1029,7 +1038,6 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
             </div>
           </div>
         </div>
-      )}
 
       {/* MODAL: EDIT PLAN & ACTUAL MAINTENANCE RECORD */}
       {editingModal && (

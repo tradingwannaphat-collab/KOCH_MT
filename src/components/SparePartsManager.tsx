@@ -336,7 +336,8 @@ export const SparePartsManager: React.FC<SparePartsManagerProps> = ({
       const today = new Date().toISOString().slice(0, 10);
       await exportElementToPdf(
         printInventoryRef.current,
-        `KOCH_SpareParts_Inventory_${today}.pdf`
+        `FM-MN01-06_KOCH_SpareParts_Inventory_${today}.pdf`,
+        { orientation: 'landscape', fitToOnePage: true, marginMm: 6 }
       );
     } catch (err) {
       console.error('PDF export error:', err);
@@ -1550,11 +1551,11 @@ export const SparePartsManager: React.FC<SparePartsManagerProps> = ({
         </div>
       )}
 
-      {/* 9. Printable Document Container for PDF Export (FM-MN01-03 Linkage) */}
+      {/* 9. Printable Document Container for PDF Export (FM-MN01-06) */}
       <div className="hidden">
-        <div ref={printInventoryRef} className="p-8 bg-white text-slate-900 font-sans max-w-5xl mx-auto">
+        <div ref={printInventoryRef} className="p-6 bg-white text-slate-900 font-sans w-[297mm] mx-auto">
           {/* Header */}
-          <div className="border-b-2 border-slate-900 pb-4 mb-4 flex items-center justify-between">
+          <div className="border-b-2 border-slate-900 pb-3 mb-3 flex items-center justify-between gap-4">
             <div>
               <div className="text-lg font-black text-slate-900">
                 บริษัท โค้ช แพคเกจจิ้ง แอนด์ แพคกิ้ง เซอร์วิสเซส จำกัด
@@ -1566,10 +1567,11 @@ export const SparePartsManager: React.FC<SparePartsManagerProps> = ({
                 รายงานการตรวจนับและยอดคงเหลือสแปร์พาร์ท (SPARE PARTS INVENTORY REPORT)
               </div>
             </div>
-            <div className="text-right font-mono text-xs text-slate-600 border border-slate-300 p-2 rounded">
-              <div>เอกสารอ้างอิง: FM-MN01-03 Link</div>
-              <div>วันที่พิมพ์: {new Date().toLocaleDateString('th-TH')}</div>
-              <div>จำนวนอะไหล่ทั้งหมด: {spareParts.length} รายการ</div>
+            <div className="text-right font-mono text-[11px] text-slate-800 border border-slate-800 px-3 py-2 rounded bg-slate-50 shrink-0 space-y-0.5">
+              <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-06</div>
+              <div className="text-[10px]">อ้างอิง: FM-MN01-03 Link • Rev.00</div>
+              <div className="text-[10px]">วันที่พิมพ์: {new Date().toLocaleDateString('th-TH')}</div>
+              <div className="text-[10px]">จำนวน {spareParts.length} รายการ • หน้าที่ 1 / 1</div>
             </div>
           </div>
 

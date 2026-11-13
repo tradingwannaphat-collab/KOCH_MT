@@ -40,6 +40,7 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
 
   return (
     <div className="max-w-4xl mx-auto p-4 sm:p-6 pb-24 print:p-0 print:pb-0">
+      <style>{`@media print { @page { size: A4 portrait; margin: 6mm; } }`}</style>
       {/* Top Action Bar (hidden when printing) */}
       <div className="no-print bg-white p-4 rounded-2xl border border-slate-200 shadow-xs mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -371,7 +372,7 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
         {/* Section 6: Bottom Sign-off (3 Columns) */}
         <div className="grid grid-cols-3 border-b-2 border-black text-xs sm:text-sm divide-x-2 divide-black">
           {/* Column 1: ผู้แจ้งซ่อม */}
-          <div className="p-3 text-center flex flex-col justify-between min-h-28">
+          <div className="p-2 text-center flex flex-col justify-between min-h-20">
             <div className="font-bold">ผู้แจ้งซ่อม</div>
             <div className="my-1">
               {ticket.requesterApproval?.signatureDataUrl ? (
@@ -388,7 +389,7 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
           </div>
 
           {/* Column 2: ผู้ซ่อม */}
-          <div className="p-3 text-center flex flex-col justify-between min-h-28">
+          <div className="p-2 text-center flex flex-col justify-between min-h-20">
             <div className="font-bold">ผู้ซ่อม</div>
             <div className="my-1">
               {ticket.technicianApproval?.signatureDataUrl ? (
@@ -405,7 +406,7 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
           </div>
 
           {/* Column 3: หัวหน้าแผนกซ่อมบำรุง */}
-          <div className="p-3 text-center flex flex-col justify-between min-h-28">
+          <div className="p-2 text-center flex flex-col justify-between min-h-20">
             <div className="font-bold">หัวหน้าแผนกซ่อมบำรุง</div>
             <div className="my-1">
               {ticket.supervisorApproval?.signatureDataUrl ? (

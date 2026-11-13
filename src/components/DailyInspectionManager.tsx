@@ -470,7 +470,7 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
       
       {/* Sub-tab switcher inside Daily Inspection */}
-      <div className="flex items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
+      <div className="flex items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs print:hidden no-print">
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl text-xs">
           <button
             type="button"
@@ -861,10 +861,29 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-800 text-[11px] font-semibold border border-blue-200">
+            <button
+              type="button"
+              onClick={() => {
+                const nextRole = inspectorRole === 'maintenance' ? 'production' : 'maintenance';
+                setInspectorRole(nextRole);
+                triggerSaveToast(
+                  nextRole === 'maintenance'
+                    ? 'เปลี่ยนผู้ตรวจสอบเป็น: ทีมซ่อมบำรุง (ตรวจสอบชั่วคราว)'
+                    : 'เปลี่ยนผู้ตรวจสอบเป็น: แผนกผลิต (หลังส่งมอบงาน)'
+                );
+              }}
+              title="คลิกเพื่อสลับสถานะผู้ตรวจสอบ (ทีมซ่อมบำรุง / แผนกผลิต)"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition cursor-pointer ${
+                inspectorRole === 'maintenance'
+                  ? 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200'
+              }`}
+            >
               <UserCheck className="w-3.5 h-3.5" />
-              <span>{t.inspectedByMaintenance}</span>
-            </span>
+              <span>
+                {inspectorRole === 'maintenance' ? t.inspectedByMaintenance : t.inspectedByProduction}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -952,8 +971,17 @@ export const DailyInspectionManager: React.FC<DailyInspectionManagerProps> = ({
                         key={d}
                         onClick={() => {
                           if (currentMachine) {
-                            onToggleCell(currentMachine.id, selectedMonth, d, item.no, status || null);
-                            triggerSaveToast(`บันทึกวันที่ ${d} ข้อ ${item.no} แล้ว`);
+                            const currentVal = status || null;
+                            onToggleCell(currentMachine.id, selectedMonth, d, item.no, currentVal);
+                            const nextLabel =
+                              currentVal === 'pass'
+                                ? '✕ ผิดปกติ (x)'
+                                : currentVal === 'abnormal'
+                                ? '■ ไม่ตรวจ'
+                                : currentVal === 'off'
+                                ? '· ล้างค่า'
+                                : '✓ ปกติ (/)';
+                            triggerSaveToast(`วันที่ ${d} ข้อ ${item.no} → ${nextLabel}`);
                           }
                         }}
                         title={`วันที่ ${d} - ข้อ ${item.no}: คลิกเพื่อเปลี่ยนสถานะ (ปกติ / ผิดปกติ / ไม่ตรวจ)`}

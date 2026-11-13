@@ -222,15 +222,16 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
     setIsExportingPdf(true);
     await exportElementToPdf(
       printSheetRef.current,
-      `ประวัติการซ่อมบำรุง_${currentMachine.tagCode || currentMachine.code}_${currentMachine.name}.pdf`
+      `FM-MN01-05_ประวัติการซ่อมบำรุง_${currentMachine.tagCode || currentMachine.code}_${currentMachine.name}.pdf`,
+      { orientation: 'portrait', fitToOnePage: true, marginMm: 6 }
     );
     setIsExportingPdf(false);
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-150">
+    <div className="space-y-4 animate-in fade-in duration-150 print:space-y-0">
       {/* Top Banner / Breadcrumb */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-700">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 text-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-700 print:hidden no-print">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-blue-600/30 border border-blue-400/40 rounded-xl text-blue-300">
@@ -292,7 +293,7 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
       </div>
 
       {/* Machine Selector Carousel / Horizontal Pills */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-3 sm:p-4 space-y-3 print:hidden no-print">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Cog className="w-4 h-4 text-blue-600" />
@@ -844,11 +845,12 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
         </>
       )}
 
-      {/* Sub-view 3: Printable Machine History Record Sheet (FM-MN01-01 / Service Log) */}
+      {/* Sub-view 3: Printable Machine History Record Sheet (FM-MN01-05) */}
       {currentMachine && activeViewMode === 'printable_sheet' && (
-        <div className="space-y-4">
+        <div className="space-y-4 print:space-y-0">
+          <style>{`@media print { @page { size: A4 portrait; margin: 6mm; } }`}</style>
           {/* Action Toolbar */}
-          <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3">
+          <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between gap-3 print:hidden no-print">
             <button
               type="button"
               onClick={() => setActiveViewMode('timeline')}
@@ -865,7 +867,7 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
                 className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>{isExportingPdf ? 'กำลังสร้างไฟล์ PDF...' : 'ดาวน์โหลด PDF (A4)'}</span>
+                <span>{isExportingPdf ? 'กำลังสร้างไฟล์ PDF...' : 'ดาวน์โหลด PDF (1 หน้า)'}</span>
               </button>
               <button
                 type="button"
@@ -879,14 +881,14 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
           </div>
 
           {/* Printable Sheet Card */}
-          <div className="flex justify-center p-2 sm:p-6 bg-slate-100 rounded-2xl border border-slate-200 overflow-x-auto">
+          <div className="flex justify-center p-2 sm:p-6 bg-slate-100 rounded-2xl border border-slate-200 overflow-x-auto print:bg-white print:p-0 print:border-0 print:overflow-visible">
             <div
               ref={printSheetRef}
-              className="bg-white text-slate-900 p-6 sm:p-10 shadow-xl rounded-xl border border-slate-300 w-full max-w-4xl min-w-[700px] text-xs space-y-6"
+              className="bg-white text-slate-900 p-5 sm:p-7 shadow-xl rounded-xl border border-slate-300 w-full max-w-4xl min-w-[700px] text-xs space-y-4 print:p-2 print:shadow-none print:border-0 print:w-full print:min-w-0"
               style={{ fontFamily: 'Sarabun, Tahoma, sans-serif' }}
             >
               {/* Document Header */}
-              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
+              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3">
                 <div className="flex items-center gap-3">
                   <KochLogo size="md" variant="horizontal" />
                   <div>
@@ -898,10 +900,11 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
                     </h3>
                   </div>
                 </div>
-                <div className="text-right text-[11px] font-mono">
-                  <div className="font-bold text-slate-900">FM-MN01-01 / FM-MN01-03</div>
-                  <div className="text-slate-500">Rev.00 Date: 19/10/2026</div>
-                  <div className="text-slate-500">พิมพ์เมื่อ: {new Date().toLocaleDateString('th-TH')}</div>
+                <div className="text-right text-[10.5px] font-mono border border-slate-800 rounded px-3 py-1.5 bg-slate-50 shrink-0 space-y-0.5">
+                  <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-MN01-05</div>
+                  <div className="text-slate-700 text-[10px]">อ้างอิง: FM-MN01-01 / FM-MN01-03</div>
+                  <div className="text-slate-600 text-[10px]">Rev.00 • Date 19/10/2026</div>
+                  <div className="text-slate-600 text-[10px]">หน้าที่: 1 / 1 • พิมพ์: {new Date().toLocaleDateString('th-TH')}</div>
                 </div>
               </div>
 

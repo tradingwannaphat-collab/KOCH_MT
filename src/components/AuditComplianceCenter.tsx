@@ -177,7 +177,8 @@ export const AuditComplianceCenter: React.FC<AuditComplianceCenterProps> = ({
       setIsExportingPdf(true);
       await exportElementToPdf(
         printSheetRef.current,
-        `KOCH_ISO_Audit_Report_${auditDate.replace(/-/g, '')}.pdf`
+        `FM-ISO-AUDIT-MN01_Audit_Report_${auditDate.replace(/-/g, '')}.pdf`,
+        { orientation: 'portrait', fitToOnePage: true, marginMm: 6 }
       );
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการดาวน์โหลดเอกสาร PDF');
@@ -714,9 +715,10 @@ export const AuditComplianceCenter: React.FC<AuditComplianceCenterProps> = ({
                 <div className="text-[11px] text-slate-600">แบบฟอร์มบันทึกการตรวจประเมินระบบคุณภาพ แผนกซ่อมบำรุง (Maintenance Quality Audit)</div>
               </div>
             </div>
-            <div className="text-right text-[10px] font-mono">
-              <div className="font-bold text-slate-900">FM-ISO-AUDIT-MN01 Rev.00</div>
-              <div>วันที่ตรวจ: {auditDate}</div>
+            <div className="text-right text-[10px] font-mono border border-slate-800 rounded px-2.5 py-1.5 bg-slate-50 shrink-0 space-y-0.5">
+              <div className="font-bold text-slate-900">หมายเลขเอกสาร: FM-ISO-AUDIT-MN01</div>
+              <div>แก้ไขครั้งที่: Rev.00 • วันที่ตรวจ: {auditDate}</div>
+              <div className="text-slate-600">หน้าที่: 1 / 1</div>
             </div>
           </div>
 
