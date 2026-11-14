@@ -110,6 +110,24 @@ export default function App() {
     }
   }, [tickets, selectedTicket]);
 
+  // Select machine automatically if user scans QR code on a printed Machine Tag (?machine=CODE)
+  useEffect(() => {
+    if (machines.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const machineParam = params.get('machine');
+    if (machineParam) {
+      const matched = machines.find(
+        (m) =>
+          m.code.toLowerCase() === machineParam.toLowerCase() ||
+          (m.tagCode && m.tagCode.toLowerCase() === machineParam.toLowerCase())
+      );
+      if (matched) {
+        setSelectedMachineId(matched.id);
+        setActiveTab('inspections');
+      }
+    }
+  }, [machines.length]);
+
   // Counts for mobile badge
   const pendingCount = tickets.filter((t: MaintenanceTicket) => t.status === 'pending').length;
   const inProgressCount = tickets.filter((t: MaintenanceTicket) => t.status === 'in_progress').length;

@@ -34,7 +34,8 @@ import {
   Upload,
   Image as ImageIcon,
   FileUp,
-  Check
+  Check,
+  Tag
 } from 'lucide-react';
 import { MachineAsset, MaintenanceTicket } from '../types/ticket';
 import { MachineBOMItem } from '../types/bom';
@@ -43,6 +44,7 @@ import { SparePartItemMaster, StockTransaction } from '../types/sparePart';
 import { MachineBOMManager } from './MachineBOMManager';
 import { SparePartsManager } from './SparePartsManager';
 import { MachineRepairHistoryManager } from './MachineRepairHistoryManager';
+import { MachineTagPrintManager } from './MachineTagPrintManager';
 import { KochLogo } from './KochLogo';
 import { exportElementToPdf } from '../utils/pdfExport';
 import { History } from 'lucide-react';
@@ -101,8 +103,8 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
   const [selectedProcess, setSelectedProcess] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   
-  // Sub-tabs: 'table' (Machine Registry) or 'history' (Repair History) or 'bom' (Bill of Materials) or 'spare_parts' (Spare Parts Catalog)
-  const [activeSubTab, setActiveSubTab] = useState<'table' | 'history' | 'bom' | 'spare_parts'>('table');
+  // Sub-tabs: 'table' (Machine Registry), 'tags' (Printable Machine Tags), 'history' (Repair History), 'bom' (Bill of Materials), 'spare_parts'
+  const [activeSubTab, setActiveSubTab] = useState<'table' | 'tags' | 'history' | 'bom' | 'spare_parts'>('table');
   const [historySelectedMachineId, setHistorySelectedMachineId] = useState<string>(machines[0]?.id || '');
   const [bomSelectedMachineId, setBomSelectedMachineId] = useState<string>('all');
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; title: string } | null>(null);
@@ -454,6 +456,20 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
             )}
 
             <button
+              type="button"
+              onClick={() => setActiveSubTab('tags')}
+              className={`text-xs px-3.5 py-2.5 rounded-xl border transition flex items-center gap-1.5 cursor-pointer font-semibold ${
+                activeSubTab === 'tags'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                  : 'bg-slate-800 hover:bg-slate-700 text-amber-300 border-slate-700'
+              }`}
+              title="พิมพ์รายการป้ายเครื่องจักรสำหรับตัด-เคลือบติดหน้าเครื่องหน้างาน"
+            >
+              <Tag className="w-4 h-4" />
+              <span>พิมพ์ป้ายติดหน้าเครื่อง</span>
+            </button>
+
+            <button
               onClick={openAddModal}
               className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
             >
@@ -464,7 +480,7 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
         </div>
       </div>
 
-      {/* Sub-Tabs Navigation: 1. Registry Table, 2. Repair History, 3. BOM, 4. Spare Parts */}
+      {/* Sub-Tabs Navigation: 1. Registry Table, 2. Machine Tag Labels, 3. Repair History, 4. BOM, 5. Spare Parts */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-2">
         <button
           type="button"
@@ -477,6 +493,19 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
         >
           <TableIcon className="w-4 h-4" />
           <span>📋 ตารางทะเบียนเครื่องมือ-เครื่องจักร ({machines.length} เครื่อง)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('tags')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer ${
+            activeSubTab === 'tags'
+              ? 'bg-amber-600 text-white shadow-md'
+              : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Tag className="w-4 h-4" />
+          <span>🏷️ ป้ายติดหน้าเครื่องจักร ({machines.length} ป้าย)</span>
         </button>
 
         <button
@@ -534,7 +563,9 @@ export const MachineListManager: React.FC<MachineListManagerProps> = ({
         </button>
       </div>
 
-      {activeSubTab === 'history' ? (
+      {activeSubTab === 'tags' ? (
+        <MachineTagPrintManager machines={machines} />
+      ) : activeSubTab === 'history' ? (
         <MachineRepairHistoryManager
           machines={machines}
           tickets={tickets}

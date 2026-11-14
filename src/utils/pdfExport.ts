@@ -384,3 +384,67 @@ export async function exportElementToPdf(
     return false;
   }
 }
+
+export async function exportPagesToPdf(
+  pageElements: HTMLElement[],
+  fileName: string = 'ป้ายติดหน้าเครื่องจักร_KOCH.pdf',
+  options: PdfExportOptions = {}
+): Promise<boolean> {
+  const validPages = pageElements.filter(Boolean);
+  if (validPages.length === 0) return false;
+  if (validPages.length === 1) {
+    return exportElementToPdf(validPages[0], fileName, { ...options, fitToOnePage: true });
+  }
+
+  const { orientation = 'portrait', marginMm = 5 } = options;
+  const resolvedOrientation: 'portrait' | 'landscape' = orientation === 'landscape' ? 'landscape' : 'portrait';
+
+  try {
+    const pdf = new jsPDF({
+      orientation: resolvedOrientation,
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const availWidth = pageWidth - marginMm * 2;
+    const availHeight = pageHeight - marginMm * 2;
+
+    for (let idx = 0; idx < validPages.length; idx++) {
+      const el = validPages[idx];
+      const captureWidth = Math.max(el.scrollWidth, el.offsetWidth, 794);
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: captureWidth + 60,
+        onclone: (clonedDoc, clonedEl) => {
+          clonedEl.style.overflow = 'visible';
+          clonedEl.style.maxWidth = 'none';
+          clonedEl.querySelectorAll<HTMLElement>('.no-print, .print\\:hidden').forEach((n) => {
+            n.style.display = 'none';
+          });
+          sanitizeClonedSubtreeColors(clonedDoc, clonedEl);
+        }
+      });
+
+      if (idx > 0) pdf.addPage();
+      const scale = Math.min(availWidth / canvas.width, availHeight / canvas.height);
+      const renderW = canvas.width * scale;
+      const renderH = canvas.height * scale;
+      const offsetX = (pageWidth - renderW) / 2;
+      const imgData = canvas.toDataURL('image/jpeg', 0.96);
+      pdf.addImage(imgData, 'JPEG', offsetX, marginMm, renderW, renderH);
+    }
+
+    pdf.save(fileName);
+    return true;
+  } catch (error) {
+    console.error('Error generating multi-page PDF:', error);
+    return false;
+  }
+}
+
