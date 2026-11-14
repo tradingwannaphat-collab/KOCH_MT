@@ -35,7 +35,7 @@ import { MachineAsset } from '../types/ticket';
 import { SparePartItemMaster } from '../types/sparePart';
 import { THAI_MONTH_NAMES, THAI_MONTH_SHORT, STANDARD_PM_TASKS } from '../data/initialPMPlans';
 import { KochLogo } from './KochLogo';
-import { exportElementToPdf } from '../utils/pdfExport';
+import { exportElementToPdf, printElementOnly } from '../utils/pdfExport';
 
 interface AnnualPMPlanManagerProps {
   machines: MachineAsset[];
@@ -358,7 +358,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-3 sm:p-6 pb-28 space-y-6">
+    <div className="max-w-7xl mx-auto p-3 sm:p-6 pb-28 space-y-6 print:max-w-none print:p-0 print:m-0 print:space-y-0">
       
       {/* Top Banner: Master Annual PM Schedule (FM-MN01-02) */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white rounded-3xl p-5 sm:p-7 shadow-xl border border-indigo-500/20 relative overflow-hidden print:hidden no-print">
@@ -543,7 +543,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
 
       {/* VIEW 1: ANNUAL PLAN VS ACT MATRIX GRID */}
       {activeViewMode === 'matrix' && (
-        <div className="space-y-4">
+        <div className="space-y-4 print:hidden no-print">
           
           {/* Filter & Search Bar */}
           <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -716,7 +716,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
 
       {/* VIEW 2: MONTHLY OPERATIONAL VIEW (CARDS BY MONTH) */}
       {activeViewMode === 'monthly' && (
-        <div className="space-y-4">
+        <div className="space-y-4 print:hidden no-print">
           
           {/* Month Navigator Header */}
           <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -858,7 +858,7 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
       )}
 
       {/* VIEW 3: PRINTABLE A4 LANDSCAPE MASTER PM SCHEDULE (FM-MN01-02) — Always mounted for 1-click PDF from any tab */}
-      <div className={activeViewMode === 'printable' ? 'space-y-4 print:space-y-0' : 'hidden'}>
+      <div className={activeViewMode === 'printable' ? 'space-y-4 print:space-y-0' : 'hidden print:block'}>
         <style>{`@media print { @page { size: A4 landscape; margin: 5mm; } }`}</style>
         <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs print:hidden no-print">
           <div>
@@ -878,7 +878,13 @@ export const AnnualPMPlanManager: React.FC<AnnualPMPlanManagerProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={() =>
+                printElementOnly(
+                  printSheetRef.current,
+                  `KOCH_Annual_PM_Plan_${selectedYear}_FM_MN01_02`,
+                  'landscape'
+                )
+              }
               className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-4 h-4" />

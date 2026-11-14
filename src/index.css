@@ -26,6 +26,18 @@
     display: none !important;
   }
 
+  body.koch-isolated-print > *:not(#koch-isolated-print-root) {
+    display: none !important;
+  }
+
+  #koch-isolated-print-root {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
   .print-only {
     display: block !important;
   }

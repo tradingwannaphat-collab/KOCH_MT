@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { Printer, Download, ArrowLeft, Loader2 } from 'lucide-react';
 import { MaintenanceTicket } from '../types/ticket';
 import { KochLogo } from './KochLogo';
-import { exportElementToPdf } from '../utils/pdfExport';
+import { exportElementToPdf, printElementOnly } from '../utils/pdfExport';
 
 interface PrintableTicketDocumentProps {
   ticket: MaintenanceTicket;
@@ -21,10 +21,11 @@ export const PrintableTicketDocument: React.FC<PrintableTicketDocumentProps> = (
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const handlePrint = () => {
-    const prevTitle = document.title;
-    document.title = `FM-MN01-03_${ticket.ticketNo || 'ใบแจ้งซ่อม'}`;
-    window.print();
-    document.title = prevTitle;
+    printElementOnly(
+      documentRef.current,
+      `FM-MN01-03_${ticket.ticketNo || 'ใบแจ้งซ่อม'}`,
+      'portrait'
+    );
   };
 
   const handleDownloadPdf = async () => {

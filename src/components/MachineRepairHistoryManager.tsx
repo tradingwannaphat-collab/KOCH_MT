@@ -32,7 +32,7 @@ import {
 import { MachineAsset, MaintenanceTicket, TicketStatus } from '../types/ticket';
 import { getStatusText, getStatusColor, getUrgencyInfo, getRootCauseText } from '../hooks/useRealtimeTickets';
 import { KochLogo } from './KochLogo';
-import { exportElementToPdf } from '../utils/pdfExport';
+import { exportElementToPdf, printElementOnly } from '../utils/pdfExport';
 
 interface MachineRepairHistoryManagerProps {
   machines: MachineAsset[];
@@ -882,7 +882,13 @@ export const MachineRepairHistoryManager: React.FC<MachineRepairHistoryManagerPr
               </button>
               <button
                 type="button"
-                onClick={() => window.print()}
+                onClick={() =>
+                  printElementOnly(
+                    printSheetRef.current,
+                    `FM-MN01-02_ประวัติการซ่อมบำรุง_${currentMachine.tagCode || currentMachine.code}`,
+                    'portrait'
+                  )
+                }
                 className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />

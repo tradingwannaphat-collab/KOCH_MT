@@ -4,7 +4,7 @@ import { MachineAsset } from '../types/ticket';
 import { KochLogo } from './KochLogo';
 import { Printer, ArrowLeft, Globe, Download, Loader2, Upload, Camera, Check } from 'lucide-react';
 import { Language, translations, SUPPORTED_LANGUAGES, DEFAULT_ITEMS_I18N } from '../i18n/translations';
-import { exportElementToPdf } from '../utils/pdfExport';
+import { exportElementToPdf, printElementOnly } from '../utils/pdfExport';
 import { compressImageFile } from '../utils/imageCompressor';
 
 export interface PrintableInspectionDocumentHandle {
@@ -96,10 +96,11 @@ export const PrintableInspectionDocument = forwardRef<PrintableInspectionDocumen
   };
 
   const handlePrint = () => {
-    const prevTitle = document.title;
-    document.title = `FM-MN01-04_ใบตรวจสอบเครื่องจักร_${sheet.machineNo || 'PM'}_${sheet.month}`;
-    window.print();
-    document.title = prevTitle;
+    printElementOnly(
+      documentRef.current,
+      `FM-MN01-04_ใบตรวจสอบเครื่องจักร_${sheet.machineNo || 'PM'}_${sheet.month}`,
+      'landscape'
+    );
   };
 
   const handleDownloadPdf = async () => {

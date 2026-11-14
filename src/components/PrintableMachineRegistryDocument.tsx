@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { MachineAsset } from '../types/ticket';
 import { KochLogo } from './KochLogo';
 import { Printer, ArrowLeft, Filter, Download, CheckCircle2, Loader2, FileText } from 'lucide-react';
-import { exportElementToPdf } from '../utils/pdfExport';
+import { exportElementToPdf, printElementOnly } from '../utils/pdfExport';
 
 interface PrintableMachineRegistryDocumentProps {
   machines: MachineAsset[];
@@ -26,10 +26,11 @@ export const PrintableMachineRegistryDocument: React.FC<PrintableMachineRegistry
   });
 
   const handlePrint = () => {
-    const prevTitle = document.title;
-    document.title = 'รายชื่อทะเบียนเครื่องมือ-เครื่องจักร FM-MN01-01 Rev.00 Date 19/10/2026';
-    window.print();
-    document.title = prevTitle;
+    printElementOnly(
+      documentRef.current,
+      'รายชื่อทะเบียนเครื่องมือ-เครื่องจักร FM-MN01-01 Rev.00 Date 19/10/2026',
+      'portrait'
+    );
   };
 
   const handleDownloadPdf = async () => {
