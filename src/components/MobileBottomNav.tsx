@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlusCircle, Wrench, BarChart3, FileSpreadsheet, Cog, ClipboardCheck, Boxes, Calendar } from 'lucide-react';
+import { PlusCircle, Wrench, BarChart3, FileSpreadsheet, Cog, ClipboardCheck, Boxes, Calendar, Activity } from 'lucide-react';
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -45,6 +45,19 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         >
           <Calendar className={`w-5 h-5 ${activeTab === 'pm_plan' ? 'text-indigo-600' : 'text-slate-500'}`} />
           <span className="text-[10px] mt-0.5 font-medium">แผน PM</span>
+        </button>
+
+        {/* Tab: Predictive Maintenance PdM */}
+        <button
+          onClick={() => onSelectTab('pdm')}
+          className={`flex flex-col items-center justify-center flex-1 py-1 rounded-xl transition ${
+            activeTab === 'pdm'
+              ? 'text-emerald-700 font-semibold'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Activity className={`w-5 h-5 ${activeTab === 'pdm' ? 'text-emerald-700' : 'text-slate-500'}`} />
+          <span className="text-[10px] mt-0.5 font-medium">PdM</span>
         </button>
 
         {/* Tab 2: Machines List */}

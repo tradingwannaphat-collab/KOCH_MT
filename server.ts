@@ -14,6 +14,8 @@ import { MachineMonthlyCheckSheet, DayCheckRecord } from './src/types/inspection
 import { MachineBOMItem, BOMChangeLog } from './src/types/bom.ts';
 import { SparePartItemMaster, StockTransaction } from './src/types/sparePart.ts';
 import { MachineAnnualPMPlan } from './src/types/pm.ts';
+import { initialPdmReadings } from './src/data/initialPdmReadings.ts';
+import { ConditionReading } from './src/types/pdm.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,7 +54,8 @@ async function startServer() {
           bomItems: parsed.bomItems || initialBOMItems,
           spareParts: parsed.spareParts || initialSpareParts,
           stockTransactions: parsed.stockTransactions || initialStockTransactions,
-          pmPlans: Array.isArray(parsed.pmPlans) && parsed.pmPlans.length > 0 ? parsed.pmPlans : initialAnnualPMPlans
+          pmPlans: Array.isArray(parsed.pmPlans) && parsed.pmPlans.length > 0 ? parsed.pmPlans : initialAnnualPMPlans,
+          pdmReadings: Array.isArray(parsed.pdmReadings) && parsed.pdmReadings.length > 0 ? parsed.pdmReadings : initialPdmReadings
         };
       }
     } catch (e) {
@@ -65,7 +68,8 @@ async function startServer() {
       bomItems: initialBOMItems,
       spareParts: initialSpareParts,
       stockTransactions: initialStockTransactions,
-      pmPlans: initialAnnualPMPlans
+      pmPlans: initialAnnualPMPlans,
+      pdmReadings: initialPdmReadings
     };
   }
 
@@ -77,6 +81,7 @@ async function startServer() {
   let spareParts: SparePartItemMaster[] = [...stored.spareParts];
   let stockTransactions: StockTransaction[] = [...stored.stockTransactions];
   let pmPlans: MachineAnnualPMPlan[] = [...stored.pmPlans];
+  let pdmReadings: ConditionReading[] = [...stored.pdmReadings];
 
   function persistToDisk() {
     try {
@@ -91,6 +96,7 @@ async function startServer() {
         spareParts,
         stockTransactions,
         pmPlans,
+        pdmReadings,
         lastSaved: new Date().toISOString()
       }, null, 2), 'utf-8');
     } catch (err) {
@@ -1228,6 +1234,32 @@ Respond ONLY with a JSON object:
     }
   });
 
+  // Predictive Maintenance (PdM) Condition Readings API
+  app.get('/api/pdm-readings', (req, res) => {
+    res.json({ success: true, pdmReadings });
+  });
+
+  app.post('/api/pdm-readings', (req, res) => {
+    try {
+      const reading: ConditionReading = {
+        ...req.body,
+        id: req.body?.id || `pdm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      };
+      pdmReadings.push(reading);
+      persistToDisk();
+      broadcast('pdm_reading_added', reading);
+      res.status(201).json({ success: true, reading });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  app.delete('/api/pdm-readings/:id', (req, res) => {
+    pdmReadings = pdmReadings.filter((r) => r.id !== req.params.id);
+    persistToDisk();
+    res.json({ success: true });
+  });
+
   // Reset to initial clean state
   app.post('/api/reset-data', (req, res) => {
     tickets = JSON.parse(JSON.stringify(initialTickets));
@@ -1237,9 +1269,10 @@ Respond ONLY with a JSON object:
     spareParts = JSON.parse(JSON.stringify(initialSpareParts));
     stockTransactions = JSON.parse(JSON.stringify(initialStockTransactions));
     pmPlans = JSON.parse(JSON.stringify(initialAnnualPMPlans));
+    pdmReadings = JSON.parse(JSON.stringify(initialPdmReadings));
     persistToDisk();
-    broadcast('data_reset', { tickets, machines, inspections, bomItems, spareParts, stockTransactions, pmPlans });
-    res.json({ success: true, tickets, machines, inspections, bomItems, spareParts, stockTransactions, pmPlans });
+    broadcast('data_reset', { tickets, machines, inspections, bomItems, spareParts, stockTransactions, pmPlans, pdmReadings });
+    res.json({ success: true, tickets, machines, inspections, bomItems, spareParts, stockTransactions, pmPlans, pdmReadings });
   });
 
   // Full Database Backup Endpoint (Download entire system state as JSON)
@@ -1256,7 +1289,8 @@ Respond ONLY with a JSON object:
       bomItems,
       spareParts,
       stockTransactions,
-      pmPlans
+      pmPlans,
+      pdmReadings
     });
   });
 
@@ -1270,7 +1304,8 @@ Respond ONLY with a JSON object:
         bomItems: restoredBom, 
         spareParts: restoredSpareParts, 
         stockTransactions: restoredTx,
-        pmPlans: restoredPM
+        pmPlans: restoredPM,
+        pdmReadings: restoredPdm
       } = req.body;
 
       if (!restoredTickets && !restoredMachines && !restoredInspections && !restoredPM) {
@@ -1288,9 +1323,10 @@ Respond ONLY with a JSON object:
       if (Array.isArray(restoredSpareParts)) spareParts = restoredSpareParts;
       if (Array.isArray(restoredTx)) stockTransactions = restoredTx;
       if (Array.isArray(restoredPM)) pmPlans = restoredPM;
+      if (Array.isArray(restoredPdm)) pdmReadings = restoredPdm;
 
       persistToDisk();
-      broadcast('data_reset', { tickets, machines, inspections, bomItems, spareParts, stockTransactions, pmPlans });
+      broadcast('data_reset', { tickets, machines, inspections, bomItems, spareParts, stockTransactions, pmPlans, pdmReadings });
       res.json({
         success: true,
         message: 'กู้คืนข้อมูลสำเร็จเรียบร้อย',

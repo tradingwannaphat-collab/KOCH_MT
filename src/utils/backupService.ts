@@ -4,6 +4,7 @@ import { generateInitialCheckSheets } from '../data/initialInspections';
 import { initialBOMItems } from '../data/initialBOM';
 import { initialSpareParts, initialStockTransactions } from '../data/initialSpareParts';
 import { generateInitialAnnualPMPlans } from '../data/initialPMPlans';
+import { initialPdmReadings } from '../data/initialPdmReadings';
 import { loadAsyncCache, savePersistentCache } from './clientStorage';
 
 export const CACHE_KEYS = {
@@ -14,7 +15,8 @@ export const CACHE_KEYS = {
   SPARE_PARTS: 'koch_spare_parts_cache_v2',
   STOCK_TX: 'koch_stock_tx_cache_v2',
   PM_2026: 'koch_pm_plans_2026',
-  PM_2027: 'koch_pm_plans_2027'
+  PM_2027: 'koch_pm_plans_2027',
+  PDM_READINGS: 'koch_pdm_readings_cache_v1'
 };
 
 async function safeGetFromPersistentStorage<T>(key: string, fallback: T): Promise<T> {
@@ -55,7 +57,7 @@ export async function downloadFullSystemBackup(): Promise<{ success: boolean; fi
 
   // 2. If backend didn't supply data, construct from IndexedDB + localStorage + master initial dataset
   if (!backupData) {
-    const [tickets, machines, inspections, bomItems, spareParts, stockTransactions, pm2026, pm2027] =
+    const [tickets, machines, inspections, bomItems, spareParts, stockTransactions, pm2026, pm2027, pdmReadings] =
       await Promise.all([
         safeGetFromPersistentStorage(CACHE_KEYS.TICKETS, initialTickets),
         safeGetFromPersistentStorage(CACHE_KEYS.MACHINES, initialMachines),
@@ -64,7 +66,8 @@ export async function downloadFullSystemBackup(): Promise<{ success: boolean; fi
         safeGetFromPersistentStorage(CACHE_KEYS.SPARE_PARTS, initialSpareParts),
         safeGetFromPersistentStorage(CACHE_KEYS.STOCK_TX, initialStockTransactions),
         safeGetFromPersistentStorage(CACHE_KEYS.PM_2026, generateInitialAnnualPMPlans(2026)),
-        safeGetFromPersistentStorage(CACHE_KEYS.PM_2027, generateInitialAnnualPMPlans(2027))
+        safeGetFromPersistentStorage(CACHE_KEYS.PM_2027, generateInitialAnnualPMPlans(2027)),
+        safeGetFromPersistentStorage(CACHE_KEYS.PDM_READINGS, initialPdmReadings)
       ]);
 
     const pmPlans = [...pm2026, ...pm27Safe(pm2027)];
@@ -80,7 +83,8 @@ export async function downloadFullSystemBackup(): Promise<{ success: boolean; fi
       bomItems,
       spareParts,
       stockTransactions,
-      pmPlans
+      pmPlans,
+      pdmReadings
     };
   }
 
@@ -147,6 +151,9 @@ export async function restoreFullSystemBackup(jsonText: string): Promise<{ succe
       const p27 = parsed.pmPlans.filter((p: any) => p.year === 2027);
       if (p26.length > 0) tasks.push(savePersistentCache(CACHE_KEYS.PM_2026, p26, true));
       if (p27.length > 0) tasks.push(savePersistentCache(CACHE_KEYS.PM_2027, p27, true));
+    }
+    if (Array.isArray(parsed.pdmReadings) && parsed.pdmReadings.length > 0) {
+      tasks.push(savePersistentCache(CACHE_KEYS.PDM_READINGS, parsed.pdmReadings, true));
     }
     await Promise.all(tasks);
   } catch (e) {

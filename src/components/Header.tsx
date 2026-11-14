@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Volume2, VolumeX, Radio, FileText, RotateCcw, Smartphone, Bell, Globe, Printer, Download, Upload, Database, Check, BookOpen, Calendar, FileSpreadsheet } from 'lucide-react';
+import { Volume2, VolumeX, Radio, FileText, RotateCcw, Smartphone, Bell, Globe, Printer, Download, Upload, Database, Check, BookOpen, Calendar, FileSpreadsheet, Activity } from 'lucide-react';
 import { KochLogo } from './KochLogo';
 import { Language, SUPPORTED_LANGUAGES, translations } from '../i18n/translations';
 import { downloadFullSystemBackup, restoreFullSystemBackup } from '../utils/backupService';
@@ -317,6 +317,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
               <span>แผน PM ประจำปี (Plan/Act)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSelectTab('pdm')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'pdm'
+                  ? 'bg-white text-emerald-700 shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+              title="การบำรุงรักษาเชิงพยากรณ์ Predictive Maintenance (FM-MN01-09)"
+            >
+              <Activity className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>เชิงพยากรณ์ (PdM)</span>
             </button>
             <button
               type="button"

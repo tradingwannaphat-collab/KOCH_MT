@@ -22,6 +22,8 @@ import { SparePartsManager } from './components/SparePartsManager';
 import { AnnualPMPlanManager } from './components/AnnualPMPlanManager';
 import { SystemGuideModal } from './components/SystemGuideModal';
 import { BlankFormsModal } from './components/BlankFormsModal';
+import { PredictiveMaintenanceManager } from './components/PredictiveMaintenanceManager';
+import { usePredictiveMaintenance } from './hooks/usePredictiveMaintenance';
 import { Bell, X } from 'lucide-react';
 
 export default function App() {
@@ -83,12 +85,18 @@ export default function App() {
     updateMachineItems
   } = useRealtimeInspections();
 
+  const {
+    readings: pdmReadings,
+    addReading: addPdmReading,
+    deleteReading: deletePdmReading
+  } = usePredictiveMaintenance();
+
   // Language state (th, en, my, lo)
   const [currentLang, setCurrentLang] = useState<Language>('th');
 
   // Active navigation tab (default to daily inspections FM-MN01-04)
   const [activeTab, setActiveTab] = useState<
-    'inspections' | 'pm_plan' | 'machines' | 'spare_parts' | 'new' | 'print_inspection' | 'print_registry' | 'print_ticket' | 'dashboard' | 'jobs'
+    'inspections' | 'pm_plan' | 'pdm' | 'machines' | 'spare_parts' | 'new' | 'print_inspection' | 'print_registry' | 'print_ticket' | 'dashboard' | 'jobs'
   >('inspections');
 
   const [selectedTicket, setSelectedTicket] = useState<MaintenanceTicket | null>(null);
@@ -248,6 +256,21 @@ export default function App() {
                   setSelectedMachineId(m.id);
                   setActiveTab('machines');
                 }}
+              />
+            )}
+
+            {/* Tab: Predictive Maintenance (PdM) */}
+            {activeTab === 'pdm' && (
+              <PredictiveMaintenanceManager
+                machines={machines}
+                tickets={tickets}
+                sheets={sheets}
+                pmPlans={pmPlans}
+                bomItems={bomItems}
+                readings={pdmReadings}
+                onAddReading={addPdmReading}
+                onDeleteReading={deletePdmReading}
+                onOpenReportTicket={(m, notes) => handleReportIssueForMachine(m, notes)}
               />
             )}
 
