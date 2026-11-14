@@ -21,6 +21,7 @@ import { useRealtimePM } from './hooks/useRealtimePM';
 import { SparePartsManager } from './components/SparePartsManager';
 import { AnnualPMPlanManager } from './components/AnnualPMPlanManager';
 import { SystemGuideModal } from './components/SystemGuideModal';
+import { BlankFormsModal } from './components/BlankFormsModal';
 import { Bell, X } from 'lucide-react';
 
 export default function App() {
@@ -95,6 +96,7 @@ export default function App() {
   const [sheetToPrint, setSheetToPrint] = useState<MachineMonthlyCheckSheet | null>(null);
   const [showOriginalDoc, setShowOriginalDoc] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showBlankFormsModal, setShowBlankFormsModal] = useState(false);
   const [prefilledMachine, setPrefilledMachine] = useState<MachineAsset | null>(null);
   const [prefilledNotes, setPrefilledNotes] = useState<string>('');
 
@@ -178,6 +180,7 @@ export default function App() {
         totalMachinesCount={machines.length}
         sparePartsCount={spareParts.length}
         onOpenGuide={() => setShowGuideModal(true)}
+        onOpenBlankForms={() => setShowBlankFormsModal(true)}
       />
 
       {/* Main Content Area */}
@@ -373,6 +376,14 @@ export default function App() {
         <SystemGuideModal
           onClose={() => setShowGuideModal(false)}
           onOpenTab={(tab) => setActiveTab(tab as any)}
+        />
+      )}
+
+      {/* Blank Forms Center Modal */}
+      {showBlankFormsModal && (
+        <BlankFormsModal
+          machines={machines}
+          onClose={() => setShowBlankFormsModal(false)}
         />
       )}
 

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Volume2, VolumeX, Radio, FileText, RotateCcw, Smartphone, Bell, Globe, Printer, Download, Upload, Database, Check, BookOpen, Calendar } from 'lucide-react';
+import { Volume2, VolumeX, Radio, FileText, RotateCcw, Smartphone, Bell, Globe, Printer, Download, Upload, Database, Check, BookOpen, Calendar, FileSpreadsheet } from 'lucide-react';
 import { KochLogo } from './KochLogo';
 import { Language, SUPPORTED_LANGUAGES, translations } from '../i18n/translations';
 import { downloadFullSystemBackup, restoreFullSystemBackup } from '../utils/backupService';
@@ -18,6 +18,7 @@ interface HeaderProps {
   sparePartsCount?: number;
   unreadCount?: number;
   onOpenGuide?: () => void;
+  onOpenBlankForms?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,7 +34,8 @@ export const Header: React.FC<HeaderProps> = ({
   totalMachinesCount = 33,
   sparePartsCount = 18,
   unreadCount = 0,
-  onOpenGuide
+  onOpenGuide,
+  onOpenBlankForms
 }) => {
   const t = translations[currentLang] || translations.th;
   const restoreInputRef = useRef<HTMLInputElement>(null);
@@ -216,6 +218,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 text-blue-600" /> : <VolumeX className="w-4 h-4" />}
             </button>
+
+            {/* Blank Forms Center Button */}
+            {onOpenBlankForms && (
+              <button
+                type="button"
+                onClick={onOpenBlankForms}
+                className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 shadow-2xs transition cursor-pointer whitespace-nowrap shrink-0"
+                title="ดาวน์โหลดแบบฟอร์มเปล่า A4 (PDF) สำหรับนำไปกรอกข้อมูลด้านนอก"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="hidden sm:inline">แบบฟอร์มเปล่า (PDF)</span>
+              </button>
+            )}
 
             {/* System Guide SOP Button */}
             {onOpenGuide && (

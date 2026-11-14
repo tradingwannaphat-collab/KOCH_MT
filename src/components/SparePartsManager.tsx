@@ -32,12 +32,15 @@ import {
   Tag,
   Clock,
   Printer,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Camera
 } from 'lucide-react';
 import { SparePartCategory, SparePartItemMaster, StockTransaction } from '../types/sparePart';
 import { MachineAsset, MaintenanceTicket } from '../types/ticket';
 import { KochLogo } from './KochLogo';
 import { exportElementToPdf } from '../utils/pdfExport';
+import { compressImageFile } from '../utils/imageCompressor';
 
 interface SparePartsManagerProps {
   spareParts: SparePartItemMaster[];
@@ -132,6 +135,28 @@ export const SparePartsManager: React.FC<SparePartsManagerProps> = ({
   // PDF Export
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const printInventoryRef = useRef<HTMLDivElement>(null);
+
+  // Image Upload Refs
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
+
+  const handleSparePartImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsProcessingPhoto(true);
+      const compressed = await compressImageFile(file, 800, 0.78);
+      if (compressed) {
+        setFormImageUrl(compressed);
+      }
+    } catch (err) {
+      console.warn('Failed compressing spare part image:', err);
+    } finally {
+      setIsProcessingPhoto(false);
+      e.target.value = '';
+    }
+  };
 
   // Filtered List
   const filteredParts = useMemo(() => {
@@ -1309,45 +1334,115 @@ export const SparePartsManager: React.FC<SparePartsManagerProps> = ({
                 />
               </div>
 
-              {/* Image URL with Preset Options */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  ลิงก์รูปภาพอะไหล่ (Image URL)
+              {/* Photo Upload + Preview + Image URL with Preset Options */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  รูปภาพอะไหล่ (อัปโหลดรูป / ถ่ายภาพ หรือวางลิงก์ URL)
                 </label>
-                <input
-                  type="url"
-                  value={formImageUrl}
-                  onChange={(e) => setFormImageUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:outline-none"
-                />
-                <div className="flex flex-wrap gap-1.5 mt-1.5">
+
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  {/* Live Thumbnail Preview */}
+                  <div className="w-20 h-20 rounded-xl border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0">
+                    {formImageUrl ? (
+                      <img
+                        src={formImageUrl}
+                        alt="ตัวอย่างรูปอะไหล่"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon className="w-7 h-7 text-slate-300" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2 w-full">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        disabled={isProcessingPhoto}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isProcessingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        <span>{isProcessingPhoto ? 'กำลังย่อรูป...' : 'อัปโหลดรูปจากเครื่อง'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => cameraInputRef.current?.click()}
+                        disabled={isProcessingPhoto}
+                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-2xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>ถ่ายรูปอะไหล่</span>
+                      </button>
+
+                      {formImageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFormImageUrl('')}
+                          className="px-2.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-xs font-semibold rounded-lg transition cursor-pointer"
+                        >
+                          ลบรูป
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSparePartImageUpload}
+                      className="hidden"
+                    />
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleSparePartImageUpload}
+                      className="hidden"
+                    />
+
+                    <input
+                      type="text"
+                      value={formImageUrl}
+                      onChange={(e) => setFormImageUrl(e.target.value)}
+                      placeholder="หรือวางลิงก์ URL รูปภาพ เช่น https://..."
+                      className="w-full text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:border-indigo-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
                   <span className="text-[10px] text-slate-500 py-0.5">รูปสำเร็จรูป:</span>
                   <button
                     type="button"
                     onClick={() => setFormImageUrl('https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700"
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700 cursor-pointer"
                   >
                     มีด/ใบเลื่อย
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormImageUrl('https://images.unsplash.com/photo-1618042164219-62c820f10723?w=400&auto=format&fit=crop&q=80')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700"
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700 cursor-pointer"
                   >
                     ลูกปืนแบริ่ง
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormImageUrl('https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=400&auto=format&fit=crop&q=80')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700"
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700 cursor-pointer"
                   >
                     สายพาน/มอเตอร์
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormImageUrl('https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?w=400&auto=format&fit=crop&q=80')}
-                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700"
+                    className="text-[10px] bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded text-slate-700 cursor-pointer"
                   >
                     วาล์วลม/ไฟฟ้า
                   </button>
